@@ -1,0 +1,45 @@
+# Build artifacts
+/target/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config with secrets (keep template)
+config.toml
+secrets.json
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Rust
+**/debug/
+**/release/
+Cargo.lock
+
+# Binaries
+aamn.exe
+aamn
+libaamn.rlib
+
+# Wintun (Windows)
+wintun.dll
+
+# Environment
+.env
+.env.local

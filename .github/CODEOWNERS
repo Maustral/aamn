@@ -1,0 +1,14 @@
+# Code Owners for AAMN Project
+
+# Default owner for everything
+* @AAMN-Network/maintainers
+
+# Security-related files
+**/security* @AAMN-Network/security
+**/crypto* @AAMN-Network/security
+
+# Documentation
+docs/ @AAMN-Network/docs
+
+# CI/CD
+.github/ @AAMN-Network/ops

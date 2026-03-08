@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+    <defs>
+        <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#191937" />
+            <stop offset="100%" stop-color="#0d1117" />
+        </radialGradient>
+        
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        
+        <filter id="glowSmall" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+
+        <linearGradient id="lineGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#00f3ff"/>
+            <stop offset="100%" stop-color="#8b5cf6"/>
+        </linearGradient>
+
+        <style>
+            .pulse {
+                animation: pulse 3s infinite alternate ease-in-out;
+            }
+            .pulse-delay-1 { animation: pulse 3s infinite alternate ease-in-out 1s; }
+            .pulse-delay-2 { animation: pulse 3s infinite alternate ease-in-out 2s; }
+            .dash-anim {
+                stroke-dasharray: 10 5;
+                animation: dash 20s linear infinite;
+            }
+            .dash-anim-reverse {
+                stroke-dasharray: 10 10;
+                animation: dash-rev 30s linear infinite;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 0.4; transform: scale(0.95); }
+                100% { opacity: 1; transform: scale(1.05); }
+            }
+            
+            @keyframes dash {
+                to { stroke-dashoffset: -1000; }
+            }
+            @keyframes dash-rev {
+                to { stroke-dashoffset: 1000; }
+            }
+            
+            .node { fill: #00f3ff; filter: url(#glowSmall); }
+            .node-purple { fill: #8b5cf6; filter: url(#glowSmall); }
+            .link { stroke: url(#lineGrad1); stroke-width: 2; opacity: 0.6; }
+            .link-data { stroke: #00f3ff; stroke-width: 1.5; opacity: 0.8; fill: none; }
+        </style>
+    </defs>
+
+    <!-- Fondo Oscuro con brillo central -->
+    <rect width="800" height="400" fill="url(#bgGlow)" />
+    
+    <!-- Red de Malla de Fondo -->
+    <g class="pulse" transform="translate(0, 0)">
+        <!-- Conexiones estáticas -->
+        <line class="link" x1="100" y1="100" x2="250" y2="150" />
+        <line class="link" x1="250" y1="150" x2="400" y2="80" />
+        <line class="link" x1="400" y1="80" x2="600" y2="150" />
+        <line class="link" x1="600" y1="150" x2="700" y2="250" />
+        
+        <line class="link" x1="150" y1="300" x2="250" y2="150" />
+        <line class="link" x1="150" y1="300" x2="350" y2="350" />
+        <line class="link" x1="350" y1="350" x2="500" y2="250" />
+        <line class="link" x1="500" y1="250" x2="600" y2="150" />
+        <line class="link" x1="500" y1="250" x2="700" y2="250" />
+        <line class="link" x1="250" y1="150" x2="500" y2="250" />
+        
+        <!-- Líneas de Tráfico Animado -->
+        <path class="link-data dash-anim" d="M100 100 L250 150 L400 80 L600 150 L700 250" />
+        <path class="link-data dash-anim-reverse" d="M150 300 L250 150 L500 250 L350 350 Z" />
+
+        <!-- Nodos -->
+        <circle class="node pulse-delay-1" cx="100" cy="100" r="8" />
+        <circle class="node-purple pulse-delay-2" cx="250" cy="150" r="12" />
+        <circle class="node pulse" cx="400" cy="80" r="7" />
+        <circle class="node-purple pulse-delay-1" cx="600" cy="150" r="14" />
+        <circle class="node pulse-delay-2" cx="700" cy="250" r="9" />
+        
+        <circle class="node-purple pulse" cx="150" cy="300" r="10" />
+        <circle class="node pulse-delay-1" cx="350" cy="350" r="8" />
+        <circle class="node-purple pulse-delay-2" cx="500" cy="250" r="15" />
+    </g>
+
+    <!-- Texto Central -->
+    <g transform="translate(400, 200)" text-anchor="middle">
+        <text y="-10" font-family="'Inter', 'Segoe UI', sans-serif" font-weight="900" font-size="72" fill="#ffffff" filter="url(#glow)" letter-spacing="8">
+            AAMN
+        </text>
+        <text y="40" font-family="'Inter', 'Segoe UI', sans-serif" font-weight="300" font-size="20" fill="#a0aec0" letter-spacing="3">
+            ADAPTIVE ANONYMOUS MESH NETWORK
+        </text>
+        <text y="80" font-family="'Fira Code', monospace" font-weight="500" font-size="14" fill="#00f3ff">
+            <tspan class="pulse">&lt;</tspan> P2P &#xb7; ENCRYPTED &#xb7; UNTRACEABLE <tspan class="pulse">&gt;</tspan>
+        </text>
+    </g>
+</svg>
