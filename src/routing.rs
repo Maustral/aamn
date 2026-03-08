@@ -14,7 +14,29 @@ pub struct NodeProfile {
     pub bandwidth_kbps: u32,
     pub reputation: f32,    // 0.0 a 1.0
     pub staked_amount: u64, // Cantidad de tokens depositados (Proof-of-Stake)
-    pub is_guard: bool,     // Si este nodo está autorizado como guard node
+    #[serde(default)]
+    pub is_guard: bool, // Si este nodo está autorizado como guard node (entry)
+    /// Si este nodo puede actuar como nodo de entrada.
+    #[serde(default = "default_can_enter")]
+    pub can_enter: bool,
+    /// Si este nodo puede actuar como nodo intermedio.
+    #[serde(default = "default_can_middle")]
+    pub can_middle: bool,
+    /// Si este nodo puede actuar como nodo de salida.
+    #[serde(default = "default_can_exit")]
+    pub can_exit: bool,
+}
+
+fn default_can_enter() -> bool {
+    true
+}
+
+fn default_can_middle() -> bool {
+    true
+}
+
+fn default_can_exit() -> bool {
+    true
 }
 
 /// Tabla de Routing basada en DHT (Simplificada para el prototipo).
@@ -103,28 +125,63 @@ impl PathFinder {
         let mut available_nodes = all_nodes;
         let mut rng = rand::thread_rng();
 
-        // Si hay guards disponibles, el primer salto SIEMPRE debe ser un guard node
-        let guards = self.routing_table.get_guards();
+        if hops == 0 {
+            return Ok(path);
+        }
+
+        // --- Primer salto: preferir guards que puedan actuar como entrada ---
         let mut start_idx = 0;
+        let mut entry_candidates: Vec<NodeProfile> = self
+            .routing_table
+            .get_guards()
+            .into_iter()
+            .filter(|n| n.can_enter)
+            .collect();
 
-        if !guards.is_empty() && hops > 0 {
-            // Seleccionar guard aleatorio con peso
-            let guard_idx = rng.gen_range(0..guards.len());
-            let guard = guards[guard_idx].clone();
+        if entry_candidates.is_empty() {
+            entry_candidates = available_nodes
+                .iter()
+                .filter(|n| n.can_enter)
+                .cloned()
+                .collect();
+        }
 
-            // Remover de available nodes para no repetir
+        if !entry_candidates.is_empty() {
+            let idx = rng.gen_range(0..entry_candidates.len());
+            let guard = entry_candidates[idx].clone();
             if let Some(pos) = available_nodes.iter().position(|n| n.id == guard.id) {
                 available_nodes.remove(pos);
             }
-
             path.push(guard);
             start_idx = 1;
         }
 
-        for _ in start_idx..hops {
+        // --- Hops intermedios y de salida ---
+        for i in start_idx..hops {
+            // Último hop: debe poder ser salida
+            let is_last = i == hops - 1;
+
+            let role_filtered: Vec<NodeProfile> = available_nodes
+                .iter()
+                .filter(|n| {
+                    if is_last {
+                        n.can_exit
+                    } else {
+                        n.can_middle
+                    }
+                })
+                .cloned()
+                .collect();
+
+            let candidates = if !role_filtered.is_empty() {
+                role_filtered
+            } else {
+                // Fallback: si no hay nodos con el rol deseado, usar todos los disponibles
+                available_nodes.clone()
+            };
+
             // Calculamos los pesos para la selección probabilística
-            // Score = (Reputación * 0.4) + (Stake * 0.3) + ((1 / Latencia) * 0.2) + (AnchoDeBanda * 0.1)
-            let weights: Vec<f32> = available_nodes
+            let weights: Vec<f32> = candidates
                 .iter()
                 .map(|n| {
                     let latency_score = 1000.0 / (n.latency_ms as f32).max(1.0);
@@ -138,16 +195,24 @@ impl PathFinder {
                 })
                 .collect();
 
+            if candidates.is_empty() {
+                return Err(anyhow!("No hay nodos suficientes para construir la ruta"));
+            }
+
             // Selección ponderada (Weighted Random Choice)
-            if let Ok(selected_index) = self.weighted_choice(&weights, &mut rng) {
-                let node = available_nodes.remove(selected_index);
-                path.push(node);
+            let selected = if let Ok(selected_index) = self.weighted_choice(&weights, &mut rng) {
+                candidates[selected_index].clone()
             } else {
                 // Si falla la selección ponderada, elegimos uno al azar para mantener la entropía
-                let index = rng.gen_range(0..available_nodes.len());
-                let node = available_nodes.remove(index);
-                path.push(node);
+                let index = rng.gen_range(0..candidates.len());
+                candidates[index].clone()
+            };
+
+            // Eliminar del conjunto disponible y añadir al path
+            if let Some(pos) = available_nodes.iter().position(|n| n.id == selected.id) {
+                available_nodes.remove(pos);
             }
+            path.push(selected);
         }
 
         Ok(path)

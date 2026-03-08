@@ -43,3 +43,8 @@ wintun.dll
 # Environment
 .env
 .env.local
+
+# Frontend (dashboard)
+dashboard/node_modules/
+dashboard/dist/
+dashboard/build/

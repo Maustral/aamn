@@ -1,4 +1,4 @@
-﻿use crate::protocol::AAMNPacket;
+use crate::protocol::AAMNPacket;
 use anyhow::{anyhow, Result};
 use quinn::{ClientConfig, Connection, Endpoint, ServerConfig};
 use rustls::{Certificate, PrivateKey, RootCertStore};
@@ -45,11 +45,26 @@ impl TransportLayer {
         addr: SocketAddr,
         _expected_node_id: &[u8; 32],
     ) -> Result<Connection> {
+        // En una versión futura, este método verificará que el certificado
+        // remoto esté vinculado a la identidad esperada del nodo. Por ahora,
+        // reutilizamos `connect` pero mantenemos la firma para no romper la API.
         self.connect(addr).await
     }
 
     fn make_client_config(&self) -> Result<ClientConfig> {
-        Ok(ClientConfig::with_native_roots())
+        // En lugar de confiar en el almacén de roots del sistema, limitamos
+        // explícitamente la confianza a los certificados conocidos si están
+        // configurados, manteniendo compatibilidad hacia atrás.
+        let mut roots = self.root_store.clone();
+        {
+            let known = self.known_node_certs.lock().map_err(|_| anyhow!("Lock"))?;
+            for cert in known.iter() {
+                roots.add(cert).map_err(|_| anyhow!("Invalid cert"))?;
+            }
+        }
+
+        let mut client_config = ClientConfig::with_root_certificates(roots);
+        Ok(client_config)
     }
 
     pub async fn send_packet(&self, connection: &Connection, packet: &AAMNPacket) -> Result<()> {

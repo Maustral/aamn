@@ -124,9 +124,31 @@ impl Default for SecurityConfig {
 
 impl SecurityConfig {
     pub fn load_from_env() -> Self {
-        Self::default()
+        use std::env;
+        let mut cfg = Self::default();
+
+        // Permite especificar la PSK vía variable de entorno en lugar de
+        // persistirla en disco.
+        if let Ok(psk) = env::var("AAMN_PSK") {
+            if !psk.trim().is_empty() {
+                cfg.psk = Some(psk);
+            }
+        }
+
+        if let Ok(psk_file) = env::var("AAMN_PSK_FILE") {
+            if !psk_file.trim().is_empty() {
+                cfg.psk_file = Some(psk_file);
+            }
+        }
+
+        cfg
     }
     pub fn validate(&self) -> Result<()> {
+        if self.psk.is_some() && self.psk_file.is_some() {
+            return Err(anyhow!(
+                "No se debe configurar simultáneamente `psk` y `psk_file`. Elija solo una fuente de PSK."
+            ));
+        }
         Ok(())
     }
 }

@@ -27,15 +27,38 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState('');
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('aamn_token');
+  });
+  const [tokenInput, setTokenInput] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const fetchNodeState = async () => {
+    if (!token) {
+      return;
+    }
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
 
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+      };
+
       const [statusRes, peersRes] = await Promise.all([
-        fetch("http://localhost:50052/api/status", { signal: controller.signal }).then(r => r.json()),
-        fetch("http://localhost:50052/api/peers", { signal: controller.signal }).then(r => r.json())
+        fetch("http://localhost:50052/api/status", { signal: controller.signal, headers }).then(r => {
+          if (r.status === 401) {
+            throw new Error('UNAUTHORIZED');
+          }
+          return r.json();
+        }),
+        fetch("http://localhost:50052/api/peers", { signal: controller.signal, headers }).then(r => {
+          if (r.status === 401) {
+            throw new Error('UNAUTHORIZED');
+          }
+          return r.json();
+        })
       ]);
 
       clearTimeout(timeoutId);
@@ -43,7 +66,11 @@ function App() {
       setPeers(peersRes);
       setError(null);
     } catch (e: any) {
-      if (e.name === 'AbortError') {
+      if (e.message === 'UNAUTHORIZED') {
+        setAuthError("Invalid token. Please login again.");
+        localStorage.removeItem('aamn_token');
+        setToken(null);
+      } else if (e.name === 'AbortError') {
         setError("Connection Timeout");
       } else {
         setError(e.message || "Failed to connect to AAMN node APIs");
@@ -54,31 +81,111 @@ function App() {
   };
 
   useEffect(() => {
+    if (!token) return;
     fetchNodeState();
     const interval = setInterval(fetchNodeState, 2000); // Polling every 2s
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   const handleGenerateNoise = async () => {
+    if (!token) return;
+
     try {
-      const res = await fetch("http://localhost:50052/api/noise", { method: 'POST' }).then(r => r.json());
+      const res = await fetch("http://localhost:50052/api/noise", {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).then(r => {
+        if (r.status === 401) {
+          throw new Error('UNAUTHORIZED');
+        }
+        return r.json();
+      });
       setActionMsg(res.message);
       setTimeout(() => setActionMsg(''), 4000);
     } catch (e: any) {
-      setActionMsg("Error: " + e.message);
+      if (e.message === 'UNAUTHORIZED') {
+        setAuthError("Invalid token. Please login again.");
+        localStorage.removeItem('aamn_token');
+        setToken(null);
+      } else {
+        setActionMsg("Error: " + e.message);
+      }
     }
   };
 
   const handleStopNode = async () => {
     if (window.confirm("Are you sure you want to shut down the node?")) {
       try {
-        const res = await fetch("http://localhost:50052/api/stop", { method: 'POST' }).then(r => r.json());
+        if (!token) return;
+        const res = await fetch("http://localhost:50052/api/stop", {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }).then(r => {
+          if (r.status === 401) {
+            throw new Error('UNAUTHORIZED');
+          }
+          return r.json();
+        });
         setActionMsg(res.message);
       } catch (e: any) {
-        setActionMsg("Error: " + e.message);
+        if (e.message === 'UNAUTHORIZED') {
+          setAuthError("Invalid token. Please login again.");
+          localStorage.removeItem('aamn_token');
+          setToken(null);
+        } else {
+          setActionMsg("Error: " + e.message);
+        }
       }
     }
   };
+
+  const handleLogin = () => {
+    const trimmed = tokenInput.trim();
+    if (!trimmed) {
+      setAuthError("Token is required");
+      return;
+    }
+    localStorage.setItem('aamn_token', trimmed);
+    setToken(trimmed);
+    setAuthError(null);
+    setLoading(true);
+  };
+
+  if (!token) {
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="glass-panel" style={{ textAlign: 'center', maxWidth: '420px', width: '100%' }}>
+          <h1 style={{ marginBottom: '16px' }}>AAMN Dashboard Login</h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Enter the control token configured in the AAMN node (env <code>AAMN_CONTROL_TOKEN</code>).
+          </p>
+          <input
+            type="password"
+            placeholder="Control token"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: 'white', marginBottom: '12px' }}
+          />
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', height: '44px' }}
+            onClick={handleLogin}
+          >
+            Connect
+          </button>
+          {authError && (
+            <div style={{ marginTop: '12px', color: '#ff6b6b', fontSize: '0.8rem' }}>
+              {authError}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !status) return (
     <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>

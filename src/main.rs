@@ -10,6 +10,7 @@ use aamn::grpc::start_grpc_server;
 use aamn::logging::{self, LoggingConfig};
 use aamn::metrics::NetworkMetrics;
 use aamn::network::SecurityEngine;
+use aamn::padding::CoverTrafficManager;
 use aamn::rate_limiter::RateLimiter;
 use aamn::routing::{NodeProfile, RoutingTable};
 use aamn::socks5::Socks5Server;
@@ -119,6 +120,9 @@ async fn start_node(
             reputation: 0.99,
             staked_amount: (5000 / (i + 1)) as u64,
             is_guard: i < 2,
+            can_enter: i < 2,          // primeros nodos actúan como entry/guards
+            can_middle: true,         // todos pueden ser intermedios
+            can_exit: i >= 2,         // últimos nodos preferidos como salida
         });
     }
 
@@ -133,6 +137,46 @@ async fn start_node(
     let rate_limiter = RateLimiter::new(100); // 100 req/s
 
     tracing::info!("Security engine initialized");
+
+    // Iniciar gestor de cover traffic (tráfico de relleno) si está habilitado por config.
+    // Número de celdas de padding por segundo controlado por AAMN_COVER_CELLS_PER_SEC.
+    let cover_cps = std::env::var("AAMN_COVER_CELLS_PER_SEC")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(0);
+
+    if cover_cps > 0 {
+        let mut cover_manager = CoverTrafficManager::new(cover_cps);
+        let mut cover_rx = cover_manager.start_generator();
+        let engine_cover = engine.clone();
+        let metrics_cover = metrics.clone();
+
+        tracing::info!(
+            "Cover traffic enabled: {} padding cells/sec (AAMN_COVER_CELLS_PER_SEC)",
+            cover_cps
+        );
+
+        tokio::spawn(async move {
+            while let Some(cell) = cover_rx.recv().await {
+                let raw = cell.to_bytes();
+                match engine_cover.protect_traffic_auto(raw, 3) {
+                    Ok(safe_packet) => {
+                        metrics_cover.inc_packets_sent(1);
+                        metrics_cover.add_bytes_encrypted(safe_packet.payload.len() as u64);
+                        tracing::trace!("Cover traffic packet protected and ready");
+                        // En una implementación completa, aquí se enviaría el paquete a la red física.
+                    }
+                    Err(e) => {
+                        tracing::error!("Error protecting cover traffic packet: {}", e);
+                    }
+                }
+            }
+        });
+    } else {
+        tracing::info!(
+            "Cover traffic disabled (set AAMN_COVER_CELLS_PER_SEC>0 to enable padding traffic)"
+        );
+    }
 
     // Iniciar SOCKS5 si se solicitó
     if let Some(s_port) = socks5_port {

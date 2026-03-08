@@ -122,7 +122,7 @@ impl Socks5Server {
         socket.read_exact(&mut port_bytes).await?;
         let target_port = u16::from_be_bytes(port_bytes);
 
-        tracing::info!(
+        tracing::debug!(
             "SOCKS5 Request to connect to: {}:{}",
             target_host,
             target_port

@@ -55,6 +55,10 @@ table.update_node(NodeProfile {
     bandwidth_kbps: u32,
     reputation: f32,
     staked_amount: u64,
+    is_guard: false,
+    can_enter: true,
+    can_middle: true,
+    can_exit: true,
 });
 
 // Buscar nodos
@@ -287,6 +291,10 @@ let profile = NodeProfile {
     bandwidth_kbps: 10000,
     reputation: 0.95,
     staked_amount: 1000,
+    is_guard: false,
+    can_enter: true,
+    can_middle: true,
+    can_exit: true,
 };
 ```
 

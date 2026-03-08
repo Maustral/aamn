@@ -251,6 +251,9 @@ mod tests {
             reputation: 1.0,
             staked_amount: 500,
             is_guard: true,
+            can_enter: true,
+            can_middle: true,
+            can_exit: true,
         });
 
         let _engine = SecurityEngine::new(table);

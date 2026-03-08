@@ -2,22 +2,21 @@
 
 <img src="assets/aamn_hero.svg" alt="AAMN Banner" width="100%" />
 
-# AAMN — Adaptive Anonymous Mesh Network
+# Turnel — Adaptive Anonymous Mesh Network
 
-**Next-generation encrypted P2P routing engine written in Rust.**
+**Next-generation encrypted P2P routing engine written in Rust, hardened for real-world deployments.**
 
-AAMN is an experimental, open-source framework for building fully anonymous,
+Turnel (based on AAMN) is an open-source framework for building anonymous,
 end-to-end encrypted peer-to-peer networks. It combines Onion Routing,
 the Noise Protocol (IKpsk2), and a Kademlia DHT to ensure that no single node
 ever knows both the sender and the destination of a message.
 
-[![CI](https://github.com/Maustral/aamn/actions/workflows/ci.yml/badge.svg)](https://github.com/Maustral/aamn/actions)
+[![CI](https://github.com/YOUR_GITHUB_USERNAME/Turnel/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/Turnel/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/Tests-60%20passing-brightgreen)](#testing)
-[![Status](https://img.shields.io/badge/Status-v1.0--Production-blue)](#status)
+[![Status](https://img.shields.io/badge/Status-v0.4--Hardened-blue)](#status)
 
-[🌐 Website](https://maustral.github.io/aamn) · [📖 Docs](docs/) · [🗺️ Roadmap](#roadmap) · [💬 Discussions](https://github.com/Maustral/aamn/discussions)
+[🌐 GitHub Pages](https://YOUR_GITHUB_USERNAME.github.io/Turnel) · [📖 Docs](docs/) · [🗺️ Roadmap](#roadmap) · [🔐 Security Model](docs/SECURITY.md) · [🧭 Security Roadmap](SECURITY_ROADMAP.md)
 
 </div>
 
@@ -58,7 +57,7 @@ AAMN (Adaptive Anonymous Mesh Network) is a protocol engine that lets nodes comm
 
 ---
 
-## Quick Start
+## Quick Start (CLI)
 
 ### Requirements
 
@@ -68,18 +67,18 @@ AAMN (Adaptive Anonymous Mesh Network) is a protocol engine that lets nodes comm
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Maustral/aamn.git
-cd aamn
+# Clone your fork of the repository
+git clone https://github.com/YOUR_GITHUB_USERNAME/Turnel.git
+cd Turnel
 
 # Build in release mode
 cargo build --release
 
-# Run your first AAMN node
+# Run your first Turnel node
 ./target/release/aamn start --port 9000
 ```
 
-### Basic Usage
+### Basic Usage (local node)
 
 ```bash
 # Start a node on port 9000
@@ -100,7 +99,7 @@ aamn -v start --port 9000
 
 ---
 
-## Example — Node Configuration
+## Example — Node Configuration (TOML)
 
 ```toml
 # aamn.toml — Node configuration file
@@ -125,7 +124,7 @@ json            = false
 
 ---
 
-## Example — Sending an Anonymous Message
+## Example — Sending an Anonymous Message (library API)
 
 ```rust
 use aamn::{HandshakeManager, OnionEncryptor, NodeIdentity};
@@ -181,7 +180,7 @@ async fn main() -> anyhow::Result<()> {
 ## Project Structure
 
 ```
-aamn/
+Turnel/
 ├── src/
 │   ├── main.rs           # CLI entry point
 │   ├── lib.rs            # Public library API
@@ -227,7 +226,7 @@ aamn/
 
 ---
 
-## Roadmap
+## Roadmap (Core Engine)
 
 ### v0.2 — Core Protocol *(current)*
 - [x] Noise IKpsk2 handshake
@@ -284,10 +283,14 @@ All 60 tests pass across Linux, macOS, and Windows via GitHub Actions CI.
 
 ## Security
 
-AAMN takes security seriously. Please read our [Security Policy](docs/SECURITY.md) before reporting vulnerabilities.
+Turnel takes security seriously. Please read:
 
-**Do NOT open a public issue for security vulnerabilities.** Instead, email the maintainers or open a [private security advisory](https://github.com/Maustral/aamn/security/advisories/new).
+- Our [Security Policy](docs/SECURITY.md) for the current threat model, limitations and deployment profiles (experimental vs. controlled/production).
+- The [Security & Anonymity Roadmap](SECURITY_ROADMAP.md) to understand how Turnel can evolve towards Tor/I2P-like anonymity against powerful adversaries.
+- The [Production Audit](PRODUCTION_AUDIT.md) and `docs/PRODUCTION_AUDIT.md` for an overview of the internal audit and hardening steps.
 
+**Do NOT open a public issue for security vulnerabilities.**
+Instead, contact the maintainers privately or use GitHub's private security advisories.
 ### Cryptographic Primitives
 
 | Primitive | Algorithm | Purpose |
@@ -303,7 +306,7 @@ AAMN takes security seriously. Please read our [Security Policy](docs/SECURITY.m
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](docs/SECURITY.md) first.
+Contributions are welcome! Please read `docs/CONTRIBUTING.md` first.
 
 ```bash
 # Fork and clone
@@ -323,7 +326,7 @@ git push origin feat/my-feature
 
 ## Philosophy
 
-AAMN is built on three core principles:
+Turnel is built on three core principles:
 
 1. **Anonymity by architecture** — Privacy should not rely on trusting any single party. The protocol guarantees anonymity even if all but one relay is compromised.
 2. **Security by default** — Every connection is encrypted; there is no plaintext fallback. Weak configurations are rejected at startup.

@@ -6,14 +6,18 @@ services:
     build: .
     image: aamn/node:v0.4
     ports:
-      - "9000:9000" # P2P
-      - "1080:1080" # SOCKS5
-      - "50051:50051" # gRPC
-      - "50052:50052" # REST
+      - "9000:9000"             # P2P (public)
+      - "127.0.0.1:1080:1080"   # SOCKS5 (local-only)
+      - "127.0.0.1:50051:50051" # gRPC Control API (local-only)
+      - "127.0.0.1:50052:50052" # REST Control API (local-only)
     volumes:
       - aamn-data:/root/.aamn
     environment:
       - RUST_LOG=info
+      # Control-plane authentication token for gRPC/REST APIs.
+      # MUST be kept secret and not committed to version control in real deployments.
+      # Replace 'change-me-strong-token' with a strong random value before production.
+      - AAMN_CONTROL_TOKEN=change-me-strong-token
     restart: unless-stopped
 
   # AAMN Web Dashboard
@@ -27,6 +31,10 @@ services:
     depends_on:
       - aamn-node
     restart: unless-stopped
+    environment:
+      # The dashboard will prompt for this token and send it as Authorization: Bearer <token>
+      # It should match AAMN_CONTROL_TOKEN configured in the node.
+      - VITE_AAMN_DASHBOARD_SECURED=true
 
 volumes:
   aamn-data:

@@ -2,19 +2,34 @@
 
 ## ⚠️ Important Disclaimer
 
-**This is a research prototype for educational purposes.** 
+Originally this project was written and described as a **research prototype**.  
+The general warnings below siguen siendo válidos para despliegues en redes públicas hostiles,
+pero este fork (Turnel) se ha endurecido específicamente para entornos de producción
+controlados, según lo descrito en `DEPLOYMENT.md` y `PRODUCTION_AUDIT.md`.
 
-DO NOT use this software for:
-- Real communications requiring anonymity
-- Financial transactions
-- Sensitive data transmission
-- Any purpose where security is critical
+### High‑risk / public anonymity use
 
-Before using for production, this codebase requires:
-- Professional security audit
-- Formal verification of cryptographic implementations
-- Extensive testing
-- Review by cryptography experts
+For Tor‑like threat models (periodistas, disidentes, usuarios anónimos en Internet), you **MUST NOT**
+rely on this codebase without, at minimum:
+- Professional security audit by independent experts
+- Formal verification of critical cryptographic components
+- Extensive adversarial testing and fuzzing at scale
+- Penetration testing of real deployments
+- Legal review in your jurisdiction
+
+### Controlled / private production deployments
+
+For controlled environments (laboratorios, redes privadas, despliegues corporativos
+con operadores de confianza y usuarios conocidos), this fork:
+- Implementa cifrado moderno (ChaCha20-Poly1305, X25519, HKDF, Ed25519).
+- Usa enrutamiento onion multi‑salto y DHT Kademlia.
+- Incluye rate limiting, padding de tráfico básico y mecanismos de ruido.
+- Endurece el plano de control (APIs gRPC/REST) con autenticación por token
+  y puertos de administración limitados a loopback.
+
+En este perfil de uso, siguiendo estrictamente las guías de `DEPLOYMENT.md`
+y las recomendaciones de este documento, el sistema se puede considerar
+**apto para producción** bajo un modelo de amenaza moderado.
 
 ---
 
@@ -260,13 +275,34 @@ if config.enable_pow {
 
 ### 7.2 For Production
 
-**DO NOT USE** without:
+#### 7.2.1 Public / high‑risk anonymity deployments
+
+For deployments comparable to Tor / Nym / I2P in adversarial environments,
+you should treat this codebase as **experimental** and not production‑grade without:
 
 1. ⚠️ Professional security audit
 2. ⚠️ Cryptographic review
 3. ⚠️ Formal verification
 4. ⚠️ Penetration testing
 5. ⚠️ Legal review
+
+#### 7.2.2 Controlled private deployments (Turnel profile)
+
+For the Turnel production profile (red privada, operadores conocidos, sin
+exposición masiva a Internet), the following hardening steps are already in place:
+
+- ✅ Control plane (gRPC/REST) protected by bearer token (`AAMN_CONTROL_TOKEN`).
+- ✅ Control ports (`50051`, `50052`, `1080`) bound to `127.0.0.1` by default in Docker.
+- ✅ No default PSK in production; PSK provided via `AAMN_PSK` / `AAMN_PSK_FILE`.
+- ✅ SOCKS5 destination logging reduced to `debug` level (no destinos en `info`).
+- ✅ Deployment guide and production audit: `DEPLOYMENT.md`, `PRODUCTION_AUDIT.md`.
+
+Even in this scenario, the following are **strongly recommended** before Internet‑facing use:
+
+- Independent pentest of your concrete deployment.
+- Periodic dependency and OS security updates.
+- Proper firewalling (solo exponer 80/443/9000 según sea necesario).
+- Operacionalización de un plan de respuesta a incidentes.
 
 ### 7.3 Alternative Solutions
 

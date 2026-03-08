@@ -504,11 +504,12 @@ impl HandshakeManager {
     }
 }
 
+#[cfg(test)]
 impl Default for HandshakeManager {
     fn default() -> Self {
-        // PSK por defecto (en producción, debería ser configurada)
+        // Solo para tests: PSK de prueba, NO usar en producción.
         let mut default_psk = [0u8; 32];
-        let psk_bytes = b"default-psk-change-in-production";
+        let psk_bytes = b"default-psk-change-in-tests";
         let len = psk_bytes.len().min(32);
         default_psk[..len].copy_from_slice(&psk_bytes[..len]);
         Self::new(&default_psk)
