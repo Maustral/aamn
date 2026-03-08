@@ -19,6 +19,7 @@ pub struct NodeProfile {
 
 /// Tabla de Routing basada en DHT (Simplificada para el prototipo).
 /// En una implementación real, esto usaría buckets de Kademlia.
+#[derive(Clone)]
 pub struct RoutingTable {
     nodes: HashMap<[u8; 32], NodeProfile>,
     guard_nodes: Vec<[u8; 32]>, // IDs de nodos guardianes
