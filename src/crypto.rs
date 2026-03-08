@@ -8,7 +8,7 @@ pub use x25519_dalek::PublicKey as X25519PublicKey;
 use x25519_dalek::StaticSecret;
 
 /// ✅ FASE 3: Funciones de protección de memoria
-
+///
 /// Trait para数据类型 que pueden ser limpiados de memoria
 pub trait SecureZero {
     /// Limpia la memoria estableciendo todos los bytes a cero
@@ -240,7 +240,7 @@ impl NodeIdentity {
         rng.fill_bytes(&mut random_bytes);
 
         let signing_key = SigningKey::from_bytes(&random_bytes);
-        let exchange_secret = StaticSecret::random_from_rng(&mut rng);
+        let exchange_secret = StaticSecret::random_from_rng(rng);
 
         Self {
             signing_key,

@@ -1,17 +1,17 @@
-use crate::crypto::{OnionEncryptor, NodeIdentity};
-use crate::protocol::AAMNPacket;
-use crate::routing::{RoutingTable, PathFinder};
-use crate::fragment::FragmentationManager;
 use crate::circuit::CircuitManager;
+use crate::crypto::{NodeIdentity, OnionEncryptor};
+use crate::fragment::FragmentationManager;
+use crate::protocol::AAMNPacket;
 use crate::rate_limiter::RateLimiter;
+use crate::routing::{PathFinder, RoutingTable};
 use anyhow::Result;
-use std::sync::Mutex;
+use rand::Rng;
 use std::collections::HashMap;
 use std::net::IpAddr;
-use rand::Rng;
+use std::sync::Mutex;
 
 /// ✅ FASE 2.5: Rate Limiting Global y Detección de DDoS
-
+///
 /// Rate limiter global que monitorea todas las conexiones
 pub struct GlobalRateLimiter {
     /// Rate limiter por nodo
@@ -37,7 +37,7 @@ impl GlobalRateLimiter {
             ddos_threshold,
         }
     }
-    
+
     /// Verifica si una solicitud puede ser procesada
     /// Retorna (puede_procesar, es_ddos)
     pub fn check(&self, node_id: &[u8; 32], ip: IpAddr) -> (bool, bool) {
@@ -47,32 +47,32 @@ impl GlobalRateLimiter {
             return (false, true);
         }
         drop(blacklist);
-        
+
         // Verificar rate limit por nodo
         if !self.per_node_limiter.check(node_id) {
             return (false, false);
         }
-        
+
         // Verificar rate limit global por IP
         if !self.per_ip_limiter.check(&ip_to_node_id(&ip)) {
             // Registrar el intento
             self.record_ip_attempt(&ip);
             return (false, false);
         }
-        
+
         // Verificar si es un ataque DDoS potencial
         let is_ddos = self.is_ddos_attack(&ip);
-        
+
         (true, is_ddos)
     }
-    
+
     /// Registra un intento de conexión por IP
     fn record_ip_attempt(&self, ip: &IpAddr) {
         let mut history = self.ip_history.lock().unwrap();
         let count = history.entry(*ip).or_insert(0);
         *count += 1;
     }
-    
+
     /// Determina si hay un ataque DDoS en progreso
     fn is_ddos_attack(&self, ip: &IpAddr) -> bool {
         let history = self.ip_history.lock().unwrap();
@@ -82,31 +82,31 @@ impl GlobalRateLimiter {
             false
         }
     }
-    
+
     /// Agrega una IP a la lista negra
     pub fn blacklist_ip(&self, ip: IpAddr) {
         let mut blacklist = self.blacklist.lock().unwrap();
         if !blacklist.contains(&ip) {
             blacklist.push(ip);
         }
-        
+
         // Limpiar historial de esa IP
         let mut history = self.ip_history.lock().unwrap();
         history.remove(&ip);
     }
-    
+
     /// Remueve una IP de la lista negra
     pub fn unblacklist_ip(&self, ip: IpAddr) {
         let mut blacklist = self.blacklist.lock().unwrap();
         blacklist.retain(|x| *x != ip);
     }
-    
+
     /// Limpia el historial de IPs
     pub fn cleanup_history(&self) {
         let mut history = self.ip_history.lock().unwrap();
         history.clear();
     }
-    
+
     /// Obtiene el número de IPs bloqueadas
     pub fn blocked_ip_count(&self) -> usize {
         self.blacklist.lock().unwrap().len()
@@ -144,7 +144,7 @@ impl SecurityEngine {
         let identity = NodeIdentity::generate();
         // Simulamos el minado del ID (En prod esto tardaría segundos)
         let node_nonce = 0; // Se asume minado previo o se llama a ProofOfWork::mine_id
-        
+
         Self {
             identity,
             node_nonce,
@@ -154,36 +154,41 @@ impl SecurityEngine {
             global_rate_limiter: None, // Inicializar sin rate limiter global
         }
     }
-    
+
     /// ✅ FASE 2.5: Crea un SecurityEngine con rate limiting global
-    pub fn new_with_rate_limiting(routing_table: RoutingTable, per_node_rps: u32, global_rps: u32, ddos_threshold: u32) -> Self {
+    pub fn new_with_rate_limiting(
+        routing_table: RoutingTable,
+        per_node_rps: u32,
+        global_rps: u32,
+        ddos_threshold: u32,
+    ) -> Self {
         let identity = NodeIdentity::generate();
         let node_nonce = 0;
-        
+
         Self {
             identity,
             node_nonce,
             path_finder: PathFinder::new(routing_table),
             fragmenter: FragmentationManager::new(),
             circuit_manager: CircuitManager::new(),
-            global_rate_limiter: Some(GlobalRateLimiter::new(per_node_rps, global_rps, ddos_threshold)),
+            global_rate_limiter: Some(GlobalRateLimiter::new(
+                per_node_rps,
+                global_rps,
+                ddos_threshold,
+            )),
         }
     }
 
     /// Prepara un paquete para ser enviado a través de la red seleccionando una ruta automática.
-    pub fn protect_traffic_auto(
-        &self,
-        raw_data: Vec<u8>,
-        hops: usize,
-    ) -> Result<AAMNPacket> {
+    pub fn protect_traffic_auto(&self, raw_data: Vec<u8>, hops: usize) -> Result<AAMNPacket> {
         // 1. Seleccionar ruta probabilística
         let path = self.path_finder.find_probabilistic_path(hops)?;
-        
+
         // 2. Extraer claves y NodeIDs (en un sistema real las claves se derivan vía Handshake)
         // Para este prototipo, simulamos claves compartidas deterministas basadas en el ID del nodo
         let mut route_keys = Vec::new();
         let mut node_ids = Vec::new();
-        
+
         for node in &path {
             route_keys.push(node.id); // Simulación de clave compartida
             node_ids.push(node.id);
@@ -191,10 +196,9 @@ impl SecurityEngine {
 
         // 3. Cifrado Onion
         let encrypted_payload = OnionEncryptor::wrap(&raw_data, &route_keys, &node_ids)?;
-        
+
         // 4. Encapsulación y Padding
-        let packet = AAMNPacket::new(encrypted_payload, 0)
-            .apply_padding();
+        let packet = AAMNPacket::new(encrypted_payload, 0).apply_padding();
 
         Ok(packet)
     }
@@ -207,7 +211,7 @@ impl SecurityEngine {
     ) -> Result<AAMNPacket> {
         // 1. Cifrado Onion
         let encrypted_payload = OnionEncryptor::wrap(&raw_data, route_keys, node_ids)?;
-        
+
         // 2. Encapsulación y Padding
         let packet = AAMNPacket::new(encrypted_payload, 0) // fragment_id simplificado
             .apply_padding();
@@ -250,12 +254,12 @@ mod tests {
 
         let engine = SecurityEngine::new(table);
         let original_data = b"Mensaje Ultra Secreto AAMN".to_vec();
-        
+
         // Simulamos una ruta de 3 nodos
         let key1 = [1u8; 32];
         let key2 = [2u8; 32];
         let key3 = [3u8; 32];
-        
+
         let node1 = [11u8; 32];
         let node2 = [22u8; 32];
         let node3 = [33u8; 32]; // Nodo de salida o destino final
@@ -280,7 +284,7 @@ mod tests {
 
         // El payload final debe contener los datos originales
         assert!(payload3.starts_with(&original_data));
-        
+
         Ok(())
     }
 }

@@ -2,17 +2,12 @@
 //!
 //! Sistema de logging usando tracing para logs estructurados
 //! con rotación de archivos y salida JSON.
-//! 
+//!
 //! ✅ FASE 3: Logging de Seguridad implementado
 
 use std::path::PathBuf;
 use tracing::Level;
-use tracing_subscriber::{
-    fmt,
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    EnvFilter,
-};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// ✅ FASE 3: Niveles de logging de seguridad
 #[derive(Debug, Clone)]
@@ -26,7 +21,7 @@ pub enum SecurityLevel {
 }
 
 /// ✅ FASE 3: Funciones de logging de seguridad
-
+///
 /// Registra un intento de conexión fallido
 pub fn log_connection_failed(addr: &str, reason: &str) {
     tracing::warn!(
@@ -43,7 +38,7 @@ pub fn log_auth_failure(node_id: Option<&[u8; 32]>, reason: &str) {
     tracing::warn!(
         target: "security",
         event = "auth_failure",
-        node_id = node_id.map(|id| hex::encode(id)),
+        node_id = node_id.map(hex::encode),
         reason = reason,
         "Error de autenticación"
     );
@@ -129,8 +124,8 @@ impl Default for LoggingConfig {
 
 /// Inicializa el sistema de logging
 pub fn init(config: &LoggingConfig) -> Result<(), Box<dyn std::error::Error>> {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,aamn=debug"));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,aamn=debug"));
 
     // Determinar el directorio de logs
     let log_dir = config.directory.clone().unwrap_or_else(|| {
@@ -151,7 +146,7 @@ pub fn init(config: &LoggingConfig) -> Result<(), Box<dyn std::error::Error>> {
         &log_dir,
         config.filename.as_deref().unwrap_or("aamn.log"),
     );
-    
+
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     // Mantener el guard vivo durante toda la aplicación
@@ -159,25 +154,21 @@ pub fn init(config: &LoggingConfig) -> Result<(), Box<dyn std::error::Error>> {
 
     // Inicializar según el formato seleccionado
     if config.json {
-        let subscriber = tracing_subscriber::registry()
-            .with(env_filter)
-            .with(
-                fmt::layer()
-                    .with_writer(non_blocking)
-                    .with_ansi(false)
-                    .with_target(true)
-                    .json()
-            );
+        let subscriber = tracing_subscriber::registry().with(env_filter).with(
+            fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_target(true)
+                .json(),
+        );
         subscriber.init();
     } else {
-        let subscriber = tracing_subscriber::registry()
-            .with(env_filter)
-            .with(
-                fmt::layer()
-                    .with_writer(non_blocking)
-                    .with_ansi(false)
-                    .with_target(true)
-            );
+        let subscriber = tracing_subscriber::registry().with(env_filter).with(
+            fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_target(true),
+        );
         subscriber.init();
     }
 
@@ -248,8 +239,7 @@ mod tests {
         let subscriber = tracing_subscriber::registry()
             .with(EnvFilter::new("info"))
             .with(fmt::layer().with_target(true));
-        
+
         let _ = subscriber.try_init();
     }
 }
-

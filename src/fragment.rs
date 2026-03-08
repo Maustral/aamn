@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::sync::Mutex;
 use crate::MAX_PACKET_SIZE;
+use anyhow::{anyhow, Result};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use anyhow::{Result, anyhow};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 // ✅ CORRECCIÓN 1.3: Tipo de HMAC basado en SHA256 (compatible con hmac)
 type HmacSha256 = Hmac<Sha256>;
@@ -24,6 +24,12 @@ pub struct FragmentationManager {
     sessions: Mutex<HashMap<u64, Vec<Option<Vec<u8>>>>>,
 }
 
+impl Default for FragmentationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FragmentationManager {
     pub fn new() -> Self {
         Self {
@@ -35,8 +41,9 @@ impl FragmentationManager {
     pub fn fragment(&self, payload: &[u8]) -> Vec<(u64, Vec<u8>, bool)> {
         let chunk_size = MAX_PACKET_SIZE / 2; // Margen para cabeceras y cifrado
         let fragment_id: u64 = rand::random();
-        
-        payload.chunks(chunk_size)
+
+        payload
+            .chunks(chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 let is_last = (i + 1) * chunk_size >= payload.len();
@@ -47,16 +54,24 @@ impl FragmentationManager {
 
     /// Intenta reensamblar un fragmento recibido.
     /// Retorna Some(payload_completo) si se han recibido todas las partes.
-    pub fn reassemble(&self, fragment_id: u64, part_index: usize, total_parts: usize, data: Vec<u8>) -> Option<Vec<u8>> {
+    pub fn reassemble(
+        &self,
+        fragment_id: u64,
+        part_index: usize,
+        total_parts: usize,
+        data: Vec<u8>,
+    ) -> Option<Vec<u8>> {
         let mut sessions = self.sessions.lock().unwrap();
-        let session = sessions.entry(fragment_id).or_insert_with(|| vec![None; total_parts]);
-        
+        let session = sessions
+            .entry(fragment_id)
+            .or_insert_with(|| vec![None; total_parts]);
+
         if part_index < session.len() {
             session[part_index] = Some(data);
         }
 
         if session.iter().all(|part| part.is_some()) {
-            let complete = session.drain(..).map(|p| p.unwrap()).flatten().collect();
+            let complete = session.drain(..).flat_map(|p| p.unwrap()).collect();
             sessions.remove(&fragment_id);
             Some(complete)
         } else {
@@ -66,14 +81,14 @@ impl FragmentationManager {
 
     /// ✅ CORRECCIÓN 1.3: Firma un fragmento con HMAC usando la clave del nodo
     pub fn sign_fragment(&self, data: &[u8], key: &[u8; 32]) -> Result<([u8; 32], Vec<u8>)> {
-        let mut mac = HmacSha256::new_from_slice(key)
-            .map_err(|_| anyhow!("Error al crear HMAC"))?;
+        let mut mac =
+            HmacSha256::new_from_slice(key).map_err(|_| anyhow!("Error al crear HMAC"))?;
         mac.update(data);
-        
+
         let result = mac.finalize().into_bytes();
         let mut hmac_bytes = [0u8; 32];
         hmac_bytes.copy_from_slice(&result);
-        
+
         // Retornar el HMAC y los datos firmados (datos + HMAC)
         let mut signed = data.to_vec();
         signed.extend_from_slice(&hmac_bytes);
@@ -85,21 +100,23 @@ impl FragmentationManager {
         if signed_data.len() < 32 {
             return Err(anyhow!("Fragmento demasiado corto para contener HMAC"));
         }
-        
+
         let data = &signed_data[..signed_data.len() - 32];
         let received_hmac = &signed_data[signed_data.len() - 32..];
-        
+
         // Calcular el HMAC esperado
-        let mut mac = HmacSha256::new_from_slice(key)
-            .map_err(|_| anyhow!("Error al crear HMAC"))?;
+        let mut mac =
+            HmacSha256::new_from_slice(key).map_err(|_| anyhow!("Error al crear HMAC"))?;
         mac.update(data);
         let result = mac.finalize().into_bytes();
-        
+
         // Comparar de forma segura contra ataques de timing
         if result[..] != received_hmac[..] {
-            return Err(anyhow!("HMAC inválido - posible ataque o corrupción de datos"));
+            return Err(anyhow!(
+                "HMAC inválido - posible ataque o corrupción de datos"
+            ));
         }
-        
+
         Ok(data.to_vec())
     }
 }

@@ -1,19 +1,19 @@
 //! AAMN - Adaptive Anonymous Mesh Network
-//! 
+//!
 //! Main entry point for the AAMN node
 
 use aamn::cli::{Cli, Commands};
-use aamn::logging::{self, LoggingConfig};
-use aamn::daemon::DaemonManager;
-use aamn::network::SecurityEngine;
-use aamn::routing::{RoutingTable, NodeProfile};
 use aamn::crypto::NodeIdentity;
-use aamn::metrics::NetworkMetrics;
-use aamn::rate_limiter::RateLimiter;
+use aamn::daemon::DaemonManager;
 use aamn::error::AAMNError;
-use clap::Parser;
+use aamn::logging::{self, LoggingConfig};
+use aamn::metrics::NetworkMetrics;
+use aamn::network::SecurityEngine;
+use aamn::rate_limiter::RateLimiter;
+use aamn::routing::{NodeProfile, RoutingTable};
 use anyhow::Result;
 use chrono::Utc;
+use clap::Parser;
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         max_file_size: 10,
         max_files: 5,
     };
-    
+
     if let Err(e) = logging::init(&log_config) {
         eprintln!("Warning: Could not initialize logging: {}", e);
     }
@@ -48,27 +48,27 @@ async fn main() -> Result<()> {
         Commands::Start { port, bootstrap } => {
             start_node(port, bootstrap).await?;
         }
-        
+
         Commands::Stop => {
             stop_node().await?;
         }
-        
+
         Commands::Status => {
             show_status().await?;
         }
-        
+
         Commands::Connect { peer } => {
             connect_to_peer(&peer).await?;
         }
-        
+
         Commands::Peers => {
             list_peers().await?;
         }
-        
+
         Commands::GenIdentity { output } => {
             generate_identity(&output).await?;
         }
-        
+
         Commands::ValidateConfig { config } => {
             validate_config(&config).await?;
         }
@@ -87,7 +87,7 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
 
     // Inicializar tabla de routing
     let routing_table = RoutingTable::new();
-    
+
     // Cargar nodos bootstrap si se especificaron
     if let Some(bootstrap_addr) = bootstrap {
         tracing::info!("Bootstrap node: {}", bootstrap_addr);
@@ -110,12 +110,12 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
 
     // Inicializar motor de seguridad
     let engine = SecurityEngine::new(table);
-    
+
     // Inicializar métricas
     let _metrics = NetworkMetrics::new();
-    
+
     // Inicializar rate limiter
-    let mut rate_limiter = RateLimiter::new(100); // 100 req/s
+    let rate_limiter = RateLimiter::new(100); // 100 req/s
 
     tracing::info!("Security engine initialized");
     tracing::info!("Node ready!");
@@ -129,7 +129,7 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
     // Procesar tráfico capturado
     while let Some(raw_packet) = rx.recv().await {
         tracing::debug!("Packet captured ({} bytes)", raw_packet.len());
-        
+
         // Fragmentación
         let fragments = engine.fragmenter.fragment(&raw_packet);
         tracing::debug!("Fragmented into {} parts", fragments.len());
@@ -162,7 +162,7 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
 /// Detener el nodo
 async fn stop_node() -> Result<()> {
     let daemon = DaemonManager::new();
-    
+
     match daemon.stop().await {
         Ok(_) => {
             println!("Node stopped successfully");
@@ -173,7 +173,7 @@ async fn stop_node() -> Result<()> {
             tracing::error!("Failed to stop daemon: {}", e);
         }
     }
-    
+
     Ok(())
 }
 
@@ -210,18 +210,18 @@ async fn list_peers() -> Result<()> {
 async fn generate_identity(output: &std::path::Path) -> Result<()> {
     let identity = NodeIdentity::generate();
     let public_id = identity.public_id();
-    
+
     println!("Generated new identity:");
     println!("  Public Key: {}", hex::encode(public_id));
-    
+
     // Guardar identidad (simplificado - en producción usar cifrado)
     let identity_data = serde_json::json!({
         "public_key": hex::encode(public_id),
     });
-    
+
     let json = serde_json::to_string_pretty(&identity_data)?;
     std::fs::write(output, json)?;
-    
+
     println!("Identity saved to: {}", output.display());
     Ok(())
 }
@@ -231,11 +231,10 @@ async fn validate_config(config: &std::path::Path) -> Result<()> {
     if !config.exists() {
         return Err(AAMNError::ConfigFileNotFound(config.display().to_string()).into());
     }
-    
+
     let content = std::fs::read_to_string(config)?;
     let _parsed: toml::Value = toml::from_str(&content)?;
-    
+
     println!("Configuration is valid!");
     Ok(())
 }
-

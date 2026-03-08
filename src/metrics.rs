@@ -1,8 +1,7 @@
 /// ✅ IMPLEMENTACIÓN 3.2: Sistema de Métricas y Monitoreo
-/// 
+///
 /// Sistema para recolectar y analizar métricas de red, incluyendo
 /// paquetes procesados, bytes cifrados, latencia, y estado de circuitos.
-
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -98,7 +97,7 @@ impl NetworkMetrics {
         let packets_received = self.packets_received.load(Ordering::Relaxed);
         let bytes_encrypted = self.bytes_encrypted.load(Ordering::Relaxed);
         let bytes_decrypted = self.bytes_decrypted.load(Ordering::Relaxed);
-        
+
         MetricsSummary {
             uptime_secs: uptime.as_secs(),
             packets_sent,
@@ -220,15 +219,14 @@ impl TrafficMetricsCollector {
     /// Registra un paquete enviado a un nodo
     pub fn record_send(&self, node_id: &[u8; 32], bytes: u64, latency_ms: u32) {
         let mut metrics = self.metrics.lock().unwrap();
-        let entry = metrics.entry(*node_id)
-            .or_insert(NodeTrafficMetrics {
-                node_id: *node_id,
-                packets_sent: 0,
-                packets_received: 0,
-                bytes_sent: 0,
-                bytes_received: 0,
-                avg_latency_ms: 0,
-            });
+        let entry = metrics.entry(*node_id).or_insert(NodeTrafficMetrics {
+            node_id: *node_id,
+            packets_sent: 0,
+            packets_received: 0,
+            bytes_sent: 0,
+            bytes_received: 0,
+            avg_latency_ms: 0,
+        });
 
         entry.packets_sent += 1;
         entry.bytes_sent += bytes;
@@ -240,15 +238,14 @@ impl TrafficMetricsCollector {
     /// Registra un paquete recibido de un nodo
     pub fn record_receive(&self, node_id: &[u8; 32], bytes: u64) {
         let mut metrics = self.metrics.lock().unwrap();
-        let entry = metrics.entry(*node_id)
-            .or_insert(NodeTrafficMetrics {
-                node_id: *node_id,
-                packets_sent: 0,
-                packets_received: 0,
-                bytes_sent: 0,
-                bytes_received: 0,
-                avg_latency_ms: 0,
-            });
+        let entry = metrics.entry(*node_id).or_insert(NodeTrafficMetrics {
+            node_id: *node_id,
+            packets_sent: 0,
+            packets_received: 0,
+            bytes_sent: 0,
+            bytes_received: 0,
+            avg_latency_ms: 0,
+        });
 
         entry.packets_received += 1;
         entry.bytes_received += bytes;
@@ -277,12 +274,12 @@ mod tests {
     #[test]
     fn test_network_metrics() {
         let metrics = NetworkMetrics::new();
-        
+
         metrics.inc_packets_sent(5);
         metrics.inc_packets_received(3);
         metrics.add_bytes_encrypted(1024);
         metrics.inc_active_circuits();
-        
+
         assert_eq!(metrics.packets_sent.load(Ordering::Relaxed), 5);
         assert_eq!(metrics.packets_received.load(Ordering::Relaxed), 3);
         assert_eq!(metrics.bytes_encrypted.load(Ordering::Relaxed), 1024);
@@ -294,9 +291,9 @@ mod tests {
         let metrics = NetworkMetrics::new();
         metrics.inc_packets_sent(100);
         metrics.add_bytes_encrypted(10240);
-        
+
         thread::sleep(Duration::from_millis(100));
-        
+
         let summary = metrics.summary();
         assert_eq!(summary.packets_sent, 100);
         assert_eq!(summary.bytes_encrypted, 10240);

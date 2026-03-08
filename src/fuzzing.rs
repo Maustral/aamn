@@ -3,15 +3,15 @@
 //! Este módulo implementa tests de fuzzing para encontrar vulnerabilidades
 //! en el parsing de datos y manejo de entrada.
 //!
-//! Para ejecutar estos tests usa: cargo fuzz run <target>
+//! Para ejecutar estos tests usa: `cargo fuzz run <target>`
 
 #![allow(dead_code)]
 
 use crate::crypto::OnionEncryptor;
-use crate::dht::{DhtMessage, DhtMessageType, NodeId};
+use crate::dht::DhtMessage;
 use crate::fragment::FragmentationManager;
 use crate::handshake::HandshakeManager;
-use crate::padding::{Cell, CellType};
+use crate::padding::Cell;
 use crate::protocol::AAMNPacket;
 
 // =============================================================================

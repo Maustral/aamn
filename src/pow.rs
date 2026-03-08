@@ -13,7 +13,7 @@ impl ProofOfWork {
         loop {
             let mut hasher = Blake2b512::new();
             hasher.update(public_key);
-            hasher.update(&nonce.to_le_bytes());
+            hasher.update(nonce.to_le_bytes());
             let result = hasher.finalize();
 
             if Self::check_difficulty(&result, target) {
@@ -27,9 +27,9 @@ impl ProofOfWork {
     pub fn verify(public_key: &[u8; 32], nonce: u64, difficulty: u32) -> bool {
         let mut hasher = Blake2b512::new();
         hasher.update(public_key);
-        hasher.update(&nonce.to_le_bytes());
+        hasher.update(nonce.to_le_bytes());
         let result = hasher.finalize();
-        
+
         Self::check_difficulty(&result, difficulty)
     }
 
@@ -37,13 +37,18 @@ impl ProofOfWork {
         let bytes_to_check = (difficulty_bits / 8) as usize;
         let remaining_bits = difficulty_bits % 8;
 
-        for i in 0..bytes_to_check {
-            if hash[i] != 0 { return false; }
+        // Verificar si los primeros `bytes_to_check` bytes son 0
+        for &item in hash.iter().take(bytes_to_check) {
+            if item != 0 {
+                return false;
+            }
         }
 
         if remaining_bits > 0 {
             let mask = 0xFF << (8 - remaining_bits);
-            if (hash[bytes_to_check] & mask) != 0 { return false; }
+            if (hash[bytes_to_check] & mask) != 0 {
+                return false;
+            }
         }
 
         true

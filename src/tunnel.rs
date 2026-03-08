@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use tokio::sync::mpsc;
 
 pub struct TunnelHandler {
@@ -19,7 +19,7 @@ impl TunnelHandler {
         #[cfg(target_os = "windows")]
         config.platform(|_config| {
             // En Windows, tun-rs usa Wintun
-            // _config.device_guid(Some(123456789)); 
+            // _config.device_guid(Some(123456789));
         });
 
         #[allow(unused_assignments)]
@@ -35,8 +35,8 @@ impl TunnelHandler {
     pub async fn run_capture(&self, tx: mpsc::Sender<Vec<u8>>) -> Result<()> {
         // Nota: tun-rs es síncrono por defecto, en una implementación real
         // usaríamos tokio::task::spawn_blocking o una versión asíncrona.
-        let mut buf = [0u8; 2048];
-        
+        let buf = [0u8; 2048];
+
         if self.device.is_none() {
             return Err(anyhow!("Dispositivo TUN no inicializado"));
         }

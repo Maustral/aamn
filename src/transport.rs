@@ -8,6 +8,7 @@ use std::sync::Mutex;
 
 pub struct TransportLayer {
     endpoint: Endpoint,
+    #[allow(dead_code)]
     root_store: RootCertStore,
     known_node_certs: Arc<Mutex<Vec<Certificate>>>,
     server_certificate: Certificate,
@@ -67,18 +68,12 @@ impl TransportLayer {
             let h = Arc::clone(&handler);
             tokio::spawn(async move {
                 if let Ok(connection) = conn.await {
-                    loop {
-                        if let Ok(mut recv) = connection.accept_uni().await {
-                            let mut buf = vec![0u8; 65535];
-                            if let Ok(Some(n)) = recv.read(&mut buf).await {
-                                if let Ok(p) = bincode::deserialize::<AAMNPacket>(&buf[..n]) {
-                                    h(p);
-                                }
-                            } else {
-                                break;
+                    while let Ok(mut recv) = connection.accept_uni().await {
+                        let mut buf = vec![0u8; 65535];
+                        if let Ok(Some(n)) = recv.read(&mut buf).await {
+                            if let Ok(p) = bincode::deserialize::<AAMNPacket>(&buf[..n]) {
+                                h(p);
                             }
-                        } else {
-                            break;
                         }
                     }
                 }

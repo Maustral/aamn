@@ -5,8 +5,8 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 /// Errores del daemon
 #[derive(Error, Debug)]
@@ -80,17 +80,19 @@ pub struct DaemonManager {
     /// PID del proceso hijo (si es daemon)
     child_pid: Arc<Mutex<Option<u32>>>,
     /// Socket de control (para comunicación)
+    #[allow(dead_code)]
     control_socket: PathBuf,
 }
 
 impl DaemonManager {
     /// Crear un nuevo administrador de daemon
     pub fn new() -> Self {
-        let socket_path = if let Some(proj_dirs) = directories::ProjectDirs::from("com", "aamn", "AAMN") {
-            proj_dirs.data_local_dir().join("daemon.sock")
-        } else {
-            PathBuf::from("daemon.sock")
-        };
+        let socket_path =
+            if let Some(proj_dirs) = directories::ProjectDirs::from("com", "aamn", "AAMN") {
+                proj_dirs.data_local_dir().join("daemon.sock")
+            } else {
+                PathBuf::from("daemon.sock")
+            };
 
         Self {
             state: Arc::new(Mutex::new(DaemonState::Idle)),
@@ -133,11 +135,11 @@ impl DaemonManager {
     async fn start_daemonized(&self, port: u16) -> Result<(), DaemonError> {
         // En Unix usaríamos fork(), pero en Windows usamos un hilo
         // El daemon real en Windows usaría CreateService
-        
+
         // Por ahora, ejecutamos en un hilo separado
         let state = self.state.clone();
         let info = self.info.clone();
-        
+
         tokio::spawn(async move {
             let mut info_lock = info.lock().await;
             info_lock.state = DaemonState::Running;
@@ -153,7 +155,7 @@ impl DaemonManager {
             // Mantener el daemon vivo
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                
+
                 let state_lock = state.lock().await;
                 if *state_lock == DaemonState::Stopping {
                     break;
@@ -213,7 +215,7 @@ impl DaemonManager {
                 {
                     use std::process::Command;
                     let _ = Command::new("taskkill")
-                        .args(&["/PID", &child_pid.to_string()])
+                        .args(["/PID", &child_pid.to_string()])
                         .output();
                 }
             }
@@ -274,17 +276,16 @@ mod tests {
     #[tokio::test]
     async fn test_daemon_start_stop() {
         let manager = DaemonManager::new();
-        
+
         // Iniciar
         let info = manager.start(9000, false).await;
         assert!(info.is_ok());
-        
+
         // Verificar que está corriendo
         assert!(manager.is_running().await);
-        
+
         // Detener
         let result = manager.stop().await;
         assert!(result.is_ok());
     }
 }
-

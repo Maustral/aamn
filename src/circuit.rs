@@ -1,6 +1,6 @@
 use crate::routing::NodeProfile;
-use std::time::{Instant, Duration};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 /// Representa un circuito (ruta de anonimato) activo.
 pub struct Circuit {
@@ -34,6 +34,12 @@ pub struct CircuitManager {
     active_circuits: Vec<Arc<Circuit>>,
 }
 
+impl Default for CircuitManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitManager {
     pub fn new() -> Self {
         Self {
@@ -47,7 +53,8 @@ impl CircuitManager {
 
     pub fn get_best_circuit(&self) -> Option<Arc<Circuit>> {
         // Por ahora devuelve el primero no expirado, pero podría ser por carga
-        self.active_circuits.iter()
+        self.active_circuits
+            .iter()
             .find(|c| !c.is_expired())
             .cloned()
     }

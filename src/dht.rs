@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use hmac::{Hmac, Mac};
 use rand::rngs::OsRng;
 use rand::RngCore;
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -26,6 +26,7 @@ pub const NODE_ID_SIZE: usize = 32;
 const K_BUCKET_SIZE: usize = 20;
 
 /// Cantidad de nodos a solicitar en FIND_NODE
+#[allow(dead_code)]
 const ALPHA: usize = 3;
 
 /// Representa un ID de nodo en la red Kademlia
@@ -49,8 +50,8 @@ impl NodeId {
     /// Calcula la distancia XOR entre dos nodos
     pub fn distance(&self, other: &NodeId) -> [u8; NODE_ID_SIZE] {
         let mut result = [0u8; NODE_ID_SIZE];
-        for i in 0..NODE_ID_SIZE {
-            result[i] = self.0[i] ^ other.0[i];
+        for (res, (&a, &b)) in result.iter_mut().zip(self.0.iter().zip(other.0.iter())) {
+            *res = a ^ b;
         }
         result
     }
@@ -95,7 +96,9 @@ impl NodeInfo {
 #[derive(Clone)]
 pub struct KBucket {
     nodes: Vec<NodeInfo>,
+    #[allow(dead_code)]
     min_distance: u8, // Distancia mínima (índice del bit)
+    #[allow(dead_code)]
     max_distance: u8, // Distancia máxima
 }
 
@@ -142,6 +145,10 @@ impl KBucket {
 
     pub fn len(&self) -> usize {
         self.nodes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
     }
 
     pub fn is_full(&self) -> bool {
@@ -475,6 +482,7 @@ pub enum ConnectionState {
 pub struct DhtManager {
     routing_table: Arc<RwLock<KademliaRoutingTable>>,
     storage: Arc<RwLock<DhtStorage>>,
+    #[allow(dead_code)]
     pending_requests: Arc<RwLock<HashMap<[u8; 16], tokio::sync::oneshot::Sender<DhtMessage>>>>,
     bootstrap_nodes: Vec<SocketAddr>,
 }
@@ -522,7 +530,7 @@ impl DhtManager {
 
         if closest.is_empty() && !self.bootstrap_nodes.is_empty() {
             // Si no hay nodos, usar bootstrap
-            for addr in &self.bootstrap_nodes {
+            if let Some(addr) = self.bootstrap_nodes.first() {
                 let node = NodeInfo::new(target_id.clone(), *addr);
                 return Ok(vec![node]);
             }
@@ -541,7 +549,7 @@ impl DhtManager {
 
         // Buscar nodos que puedan tener el valor
         let target_id = NodeId(*key);
-        let nodes = self.find_node(target_id).await?;
+        let _nodes = self.find_node(target_id).await?;
 
         // En implementación real, consultar nodos remotos
         // Por ahora, retornar el valor local si existe
@@ -555,7 +563,7 @@ impl DhtManager {
 
         // Encontrar nodos cercanos para replicar
         let target_id = NodeId(key);
-        let nodes = self.find_node(target_id).await?;
+        let _nodes = self.find_node(target_id).await?;
 
         // En implementación real, enviar STORE a nodos cercanos
         // Por ahora, solo almacenamos localmente

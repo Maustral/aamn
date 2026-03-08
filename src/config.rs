@@ -1,14 +1,15 @@
 //! Módulo de Configuración - AAMN
-//! 
+//!
 //! Sistema de configuración centralizado para nodos AAMN.
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct Config {
     pub network: NetworkConfig,
     pub security: SecurityConfig,
@@ -16,16 +17,6 @@ pub struct Config {
     pub logging: LoggingConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            network: NetworkConfig::default(),
-            security: SecurityConfig::default(),
-            performance: PerformanceConfig::default(),
-            logging: LoggingConfig::default(),
-        }
-    }
-}
 
 impl Config {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -85,7 +76,9 @@ impl NetworkConfig {
         use std::env;
         let mut config = Self::default();
         if let Ok(addr) = env::var("AAMN_LISTEN_ADDR") {
-            if let Ok(parsed) = addr.parse() { config.listen_addr = parsed; }
+            if let Ok(parsed) = addr.parse() {
+                config.listen_addr = parsed;
+            }
         }
         config
     }
@@ -132,8 +125,12 @@ impl Default for SecurityConfig {
 }
 
 impl SecurityConfig {
-    pub fn load_from_env() -> Self { Self::default() }
-    pub fn validate(&self) -> Result<()> { Ok(()) }
+    pub fn load_from_env() -> Self {
+        Self::default()
+    }
+    pub fn validate(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,8 +161,12 @@ impl Default for PerformanceConfig {
 }
 
 impl PerformanceConfig {
-    pub fn load_from_env() -> Self { Self::default() }
-    pub fn validate(&self) -> Result<()> { Ok(()) }
+    pub fn load_from_env() -> Self {
+        Self::default()
+    }
+    pub fn validate(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -198,7 +199,9 @@ impl Default for LoggingConfig {
 }
 
 impl LoggingConfig {
-    pub fn load_from_env() -> Self { Self::default() }
+    pub fn load_from_env() -> Self {
+        Self::default()
+    }
 }
 
 pub struct ConfigBuilder {
@@ -207,33 +210,43 @@ pub struct ConfigBuilder {
 
 impl ConfigBuilder {
     pub fn new() -> Self {
-        Self { config: Config::default() }
+        Self {
+            config: Config::default(),
+        }
     }
     pub fn with_network(mut self, network: NetworkConfig) -> Self {
-        self.config.network = network; self
+        self.config.network = network;
+        self
     }
     pub fn with_security(mut self, security: SecurityConfig) -> Self {
-        self.config.security = security; self
+        self.config.security = security;
+        self
     }
     pub fn with_performance(mut self, performance: PerformanceConfig) -> Self {
-        self.config.performance = performance; self
+        self.config.performance = performance;
+        self
     }
     pub fn with_logging(mut self, logging: LoggingConfig) -> Self {
-        self.config.logging = logging; self
+        self.config.logging = logging;
+        self
     }
     pub fn build(self) -> Result<Config> {
-        self.config.validate()?; Ok(self.config)
+        self.config.validate()?;
+        Ok(self.config)
     }
 }
 
 impl Default for ConfigBuilder {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn test_default_config() {
+    #[test]
+    fn test_default_config() {
         let config = Config::default();
         assert!(config.network.listen_addr.port() == 9000);
     }

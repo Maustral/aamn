@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use crate::MAX_PACKET_SIZE;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AAMNPacket {
@@ -14,7 +14,7 @@ impl AAMNPacket {
     pub fn new(payload: Vec<u8>, fragment_id: u64) -> Self {
         use rand::{thread_rng, Rng};
         let mut rng = thread_rng();
-        
+
         Self {
             version: crate::PROTOCOL_VERSION,
             route_entropy: rng.gen(),
@@ -23,29 +23,29 @@ impl AAMNPacket {
             payload,
         }
     }
-    
+
     /// Valida el paquete para verificar que es válido
     pub fn validate(&self) -> Result<(), &'static str> {
         // Verificar versión
         if self.version != crate::PROTOCOL_VERSION {
             return Err("Versión de protocolo inválida");
         }
-        
+
         // Verificar TTL
         if self.ttl == 0 {
             return Err("TTL expirado");
         }
-        
+
         // Verificar tamaño máximo
         if self.payload.len() > MAX_PACKET_SIZE {
             return Err("Payload demasiado grande");
         }
-        
+
         // Verificar que no hay overflow en fragment_id
         if self.fragment_id > u64::MAX / 2 {
             return Err("Fragment ID inválido");
         }
-        
+
         Ok(())
     }
 
@@ -75,5 +75,5 @@ pub enum ControlMessage {
     KeepAlive,
     RouteUpdate {
         nodes: Vec<[u8; 32]>,
-    }
+    },
 }

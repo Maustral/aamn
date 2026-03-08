@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use rand::Rng;
-use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Identidad y métricas de un nodo para el routing adaptativo.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -12,7 +12,7 @@ pub struct NodeProfile {
     pub last_seen: DateTime<Utc>,
     pub latency_ms: u32,
     pub bandwidth_kbps: u32,
-    pub reputation: f32, // 0.0 a 1.0
+    pub reputation: f32,    // 0.0 a 1.0
     pub staked_amount: u64, // Cantidad de tokens depositados (Proof-of-Stake)
 }
 
@@ -20,6 +20,12 @@ pub struct NodeProfile {
 /// En una implementación real, esto usaría buckets de Kademlia.
 pub struct RoutingTable {
     nodes: HashMap<[u8; 32], NodeProfile>,
+}
+
+impl Default for RoutingTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RoutingTable {
@@ -66,9 +72,11 @@ impl PathFinder {
     /// Implementa "Entropy-Weighted Path Selection".
     pub fn find_probabilistic_path(&self, hops: usize) -> Result<Vec<NodeProfile>> {
         let all_nodes = self.routing_table.get_all_nodes();
-        
+
         if all_nodes.len() < hops {
-            return Err(anyhow!("No hay suficientes nodos en la DHT para crear la ruta"));
+            return Err(anyhow!(
+                "No hay suficientes nodos en la DHT para crear la ruta"
+            ));
         }
 
         let mut path = Vec::new();
@@ -78,13 +86,19 @@ impl PathFinder {
         for _ in 0..hops {
             // Calculamos los pesos para la selección probabilística
             // Score = (Reputación * 0.4) + (Stake * 0.3) + ((1 / Latencia) * 0.2) + (AnchoDeBanda * 0.1)
-            let weights: Vec<f32> = available_nodes.iter().map(|n| {
-                let latency_score = 1000.0 / (n.latency_ms as f32).max(1.0);
-                let bw_score = n.bandwidth_kbps as f32 / 1000.0;
-                let stake_score = (n.staked_amount as f32 / 1000.0).min(1.0); // Normalizado
-                
-                (n.reputation * 0.4) + (stake_score * 0.3) + (latency_score * 0.2) + (bw_score * 0.1)
-            }).collect();
+            let weights: Vec<f32> = available_nodes
+                .iter()
+                .map(|n| {
+                    let latency_score = 1000.0 / (n.latency_ms as f32).max(1.0);
+                    let bw_score = n.bandwidth_kbps as f32 / 1000.0;
+                    let stake_score = (n.staked_amount as f32 / 1000.0).min(1.0); // Normalizado
+
+                    (n.reputation * 0.4)
+                        + (stake_score * 0.3)
+                        + (latency_score * 0.2)
+                        + (bw_score * 0.1)
+                })
+                .collect();
 
             // Selección ponderada (Weighted Random Choice)
             if let Ok(selected_index) = self.weighted_choice(&weights, &mut rng) {
@@ -125,7 +139,7 @@ mod tests {
     #[test]
     fn test_probabilistic_routing() -> Result<()> {
         let mut table = RoutingTable::new();
-        
+
         // Poblamos con nodos de prueba
         for i in 0..10 {
             table.update_node(NodeProfile {
@@ -140,7 +154,7 @@ mod tests {
         }
 
         let finder = PathFinder::new(table);
-        
+
         // Generamos 100 rutas para verificar la distribución probabilística
         let mut first_hop_counts = HashMap::new();
         for _ in 0..100 {
@@ -152,9 +166,15 @@ mod tests {
         // El nodo 0 tiene mejores métricas, debería aparecer más veces que el nodo 9
         let count_best = *first_hop_counts.get(&[0u8; 32]).unwrap_or(&0);
         let count_worst = *first_hop_counts.get(&[9u8; 32]).unwrap_or(&0);
-        
-        println!("Apariciones del mejor nodo: {}, Peor nodo: {}", count_best, count_worst);
-        assert!(count_best >= count_worst, "El ruteo probabilístico falló en favorecer nodos de alto rendimiento");
+
+        println!(
+            "Apariciones del mejor nodo: {}, Peor nodo: {}",
+            count_best, count_worst
+        );
+        assert!(
+            count_best >= count_worst,
+            "El ruteo probabilístico falló en favorecer nodos de alto rendimiento"
+        );
 
         Ok(())
     }

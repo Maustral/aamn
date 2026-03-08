@@ -14,6 +14,7 @@ use std::sync::Arc;
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 /// Longitud de la clave de sesión
+#[allow(dead_code)]
 const SESSION_KEY_LEN: usize = 32;
 
 /// Salida del handshake inicial
@@ -62,8 +63,8 @@ impl HandshakeManager {
     /// Crea un nuevo gestor de handshake con clave real
     pub fn new(psk: &[u8; 32]) -> Self {
         // Generar clave estática X25519
-        let mut rng = OsRng;
-        let static_secret = StaticSecret::random_from_rng(&mut rng);
+        let rng = OsRng;
+        let static_secret = StaticSecret::random_from_rng(rng);
         let static_public_key = X25519PublicKey::from(&static_secret);
 
         // Derivar PSK a 32 bytes usando BLAKE2b
@@ -91,8 +92,8 @@ impl HandshakeManager {
         let psk_bytes = psk_string.as_bytes();
 
         // Generar clave estática X25519
-        let mut rng = OsRng;
-        let static_secret = StaticSecret::random_from_rng(&mut rng);
+        let rng = OsRng;
+        let static_secret = StaticSecret::random_from_rng(rng);
         let static_public_key = X25519PublicKey::from(&static_secret);
 
         // Derivar PSK a 32 bytes usando BLAKE2b con salt único
@@ -290,13 +291,13 @@ impl HandshakeManager {
         let mut recv_key = [0u8; 32];
 
         let mut hasher = Blake2b512::new();
-        hasher.update(&shared_secret);
+        hasher.update(shared_secret);
         hasher.update(b"AAMN-SendKey-v1");
         let result = hasher.finalize();
         send_key.copy_from_slice(&result[..32]);
 
         let mut hasher = Blake2b512::new();
-        hasher.update(&shared_secret);
+        hasher.update(shared_secret);
         hasher.update(b"AAMN-RecvKey-v1");
         let result = hasher.finalize();
         recv_key.copy_from_slice(&result[..32]);
@@ -387,14 +388,14 @@ impl HandshakeManager {
 
             // Derivar nueva clave de envío
             let mut hasher = Blake2b512::new();
-            hasher.update(&old_session.send_key);
+            hasher.update(old_session.send_key);
             hasher.update(b"AAMN-KeyRotation-SendKey-v1");
             let result = hasher.finalize();
             new_send_key.copy_from_slice(&result[..32]);
 
             // Derivar nueva clave de recepción
             let mut hasher = Blake2b512::new();
-            hasher.update(&old_session.recv_key);
+            hasher.update(old_session.recv_key);
             hasher.update(b"AAMN-KeyRotation-RecvKey-v1");
             let result = hasher.finalize();
             new_recv_key.copy_from_slice(&result[..32]);
@@ -427,8 +428,8 @@ impl HandshakeManager {
         use blake2::{Blake2b512, Digest};
 
         // Generar clave efímera para esta sesión
-        let mut rng = OsRng;
-        let ephemeral_secret = x25519_dalek::EphemeralSecret::random_from_rng(&mut rng);
+        let rng = OsRng;
+        let ephemeral_secret = x25519_dalek::EphemeralSecret::random_from_rng(rng);
         let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);
 
         // Derivar clave compartida con la clave efímera

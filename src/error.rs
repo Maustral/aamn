@@ -10,7 +10,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Criptografía
     // ============================================
-    
     #[error("Error criptográfico: {0}")]
     Crypto(String),
 
@@ -29,7 +28,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Red
     // ============================================
-
     #[error("Error de red: {0}")]
     Network(String),
 
@@ -48,7 +46,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Routing
     // ============================================
-
     #[error("Error de enrutamiento: {0}")]
     Routing(String),
 
@@ -64,7 +61,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Configuración
     // ============================================
-
     #[error("Error de configuración: {0}")]
     Config(String),
 
@@ -77,7 +73,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Persistencia
     // ============================================
-
     #[error("Error de persistencia: {0}")]
     Storage(String),
 
@@ -90,7 +85,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Autenticación
     // ============================================
-
     #[error("Error de autenticación: {0}")]
     Auth(String),
 
@@ -103,7 +97,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Protocolo
     // ============================================
-
     #[error("Error de protocolo: {0}")]
     Protocol(String),
 
@@ -116,7 +109,6 @@ pub enum AAMNError {
     // ============================================
     // Errores de Sistema
     // ============================================
-
     #[error("Error del sistema: {0}")]
     System(String),
 
@@ -132,7 +124,6 @@ pub enum AAMNError {
     // ============================================
     // Errores Desconocidos
     // ============================================
-
     #[error("Error desconocido: {0}")]
     Unknown(String),
 }
@@ -151,46 +142,46 @@ impl AAMNError {
             Self::EncryptionError(_) => "ENCRYPT",
             Self::DecryptionError(_) => "DECRYPT",
             Self::InvalidKey(_) => "INVALID_KEY",
-            
+
             // Red
             Self::Network(_) => "NETWORK",
             Self::ConnectionRefused(_) => "CONN_REFUSED",
             Self::ConnectionTimeout(_) => "CONN_TIMEOUT",
             Self::Transport(_) => "TRANSPORT",
             Self::PortInUse(_) => "PORT_IN_USE",
-            
+
             // Routing
             Self::Routing(_) => "ROUTING",
             Self::RouteNotFound => "ROUTE_NOT_FOUND",
             Self::NodeUnavailable(_) => "NODE_UNAVAILABLE",
             Self::NoNodesAvailable => "NO_NODES",
-            
+
             // Configuración
             Self::Config(_) => "CONFIG",
             Self::ConfigFileNotFound(_) => "CONFIG_NOT_FOUND",
             Self::InvalidConfig(_) => "INVALID_CONFIG",
-            
+
             // Persistencia
             Self::Storage(_) => "STORAGE",
             Self::FileNotFound(_) => "FILE_NOT_FOUND",
             Self::PermissionDenied(_) => "PERMISSION",
-            
+
             // Autenticación
             Self::Auth(_) => "AUTH",
             Self::InvalidSignature => "INVALID_SIG",
             Self::InvalidCertificate(_) => "INVALID_CERT",
-            
+
             // Protocolo
             Self::Protocol(_) => "PROTOCOL",
             Self::IncompatibleVersion(_) => "VERSION",
             Self::MalformedPacket(_) => "MALFORMED",
-            
+
             // Sistema
             Self::System(_) => "SYSTEM",
             Self::InsufficientResources(_) => "RESOURCES",
             Self::DaemonNotAvailable => "DAEMON_DOWN",
             Self::DaemonAlreadyRunning => "DAEMON_RUNNING",
-            
+
             // Unknown
             Self::Unknown(_) => "UNKNOWN",
         }
@@ -200,11 +191,11 @@ impl AAMNError {
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            Self::Network(_) |
-            Self::ConnectionTimeout(_) |
-            Self::NodeUnavailable(_) |
-            Self::NoNodesAvailable |
-            Self::Transport(_)
+            Self::Network(_)
+                | Self::ConnectionTimeout(_)
+                | Self::NodeUnavailable(_)
+                | Self::NoNodesAvailable
+                | Self::Transport(_)
         )
     }
 
@@ -212,11 +203,11 @@ impl AAMNError {
     pub fn is_critical(&self) -> bool {
         matches!(
             self,
-            Self::Crypto(_) |
-            Self::KeyExchange(_) |
-            Self::InvalidKey(_) |
-            Self::InvalidSignature |
-            Self::InvalidCertificate(_)
+            Self::Crypto(_)
+                | Self::KeyExchange(_)
+                | Self::InvalidKey(_)
+                | Self::InvalidSignature
+                | Self::InvalidCertificate(_)
         )
     }
 }
@@ -275,4 +266,3 @@ mod tests {
         assert!(!AAMNError::Network("test".to_string()).is_critical());
     }
 }
-

@@ -115,4 +115,3 @@ mod tests {
         assert_eq!(cli.get_log_level(), "debug");
     }
 }
-
