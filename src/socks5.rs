@@ -84,16 +84,14 @@ impl Socks5Server {
         }
 
         let address_type = req_header[3];
-        let target_host: String;
-        let target_port: u16;
 
-        match address_type {
+        let target_host = match address_type {
             0x01 => {
                 // IPv4
                 let mut ip_bytes = [0u8; 4];
                 socket.read_exact(&mut ip_bytes).await?;
                 let ip = Ipv4Addr::from(ip_bytes);
-                target_host = ip.to_string();
+                ip.to_string()
             }
             0x03 => {
                 // Domain Name
@@ -103,14 +101,14 @@ impl Socks5Server {
 
                 let mut domain_bytes = vec![0u8; len];
                 socket.read_exact(&mut domain_bytes).await?;
-                target_host = String::from_utf8_lossy(&domain_bytes).to_string();
+                String::from_utf8_lossy(&domain_bytes).to_string()
             }
             0x04 => {
                 // IPv6
                 let mut ip_bytes = [0u8; 16];
                 socket.read_exact(&mut ip_bytes).await?;
                 let ip = Ipv6Addr::from(ip_bytes);
-                target_host = ip.to_string();
+                ip.to_string()
             }
             _ => {
                 socket
@@ -118,11 +116,11 @@ impl Socks5Server {
                     .await?;
                 return Err(anyhow!("Unsupported address type: {}", address_type));
             }
-        }
+        };
 
         let mut port_bytes = [0u8; 2];
         socket.read_exact(&mut port_bytes).await?;
-        target_port = u16::from_be_bytes(port_bytes);
+        let target_port = u16::from_be_bytes(port_bytes);
 
         tracing::info!(
             "SOCKS5 Request to connect to: {}:{}",
