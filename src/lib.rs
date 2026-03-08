@@ -17,6 +17,7 @@ pub mod pow;
 pub mod protocol;
 pub mod rate_limiter;
 pub mod routing;
+pub mod socks5;
 pub mod transport;
 pub mod tunnel;
 

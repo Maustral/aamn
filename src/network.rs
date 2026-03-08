@@ -250,6 +250,7 @@ mod tests {
             bandwidth_kbps: 1000,
             reputation: 1.0,
             staked_amount: 500,
+            is_guard: true,
         });
 
         let _engine = SecurityEngine::new(table);

@@ -40,6 +40,10 @@ pub enum Commands {
         /// Dirección de bootstrap
         #[arg(long)]
         bootstrap: Option<String>,
+
+        /// Habilitar proxy SOCKS5 en el puerto especificado
+        #[arg(long)]
+        socks5_port: Option<u16>,
     },
 
     /// Detener el nodo en ejecución
@@ -92,9 +96,14 @@ mod tests {
     fn test_cli_parse_start() {
         let cli = Cli::parse_from(["aamn", "start", "--port", "8080"]);
         match cli.command {
-            Commands::Start { port, bootstrap } => {
+            Commands::Start {
+                port,
+                bootstrap,
+                socks5_port,
+            } => {
                 assert_eq!(port, 8080);
                 assert_eq!(bootstrap, None);
+                assert_eq!(socks5_port, None);
             }
             _ => panic!("Expected Start command"),
         }

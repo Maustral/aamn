@@ -11,6 +11,7 @@ use aamn::metrics::NetworkMetrics;
 use aamn::network::SecurityEngine;
 use aamn::rate_limiter::RateLimiter;
 use aamn::routing::{NodeProfile, RoutingTable};
+use aamn::socks5::Socks5Server;
 use anyhow::Result;
 use chrono::Utc;
 use clap::Parser;
@@ -45,8 +46,12 @@ async fn main() -> Result<()> {
 
     // Ejecutar el comando solicitado
     match cli.command {
-        Commands::Start { port, bootstrap } => {
-            start_node(port, bootstrap).await?;
+        Commands::Start {
+            port,
+            bootstrap,
+            socks5_port,
+        } => {
+            start_node(port, bootstrap, socks5_port).await?;
         }
 
         Commands::Stop => {
@@ -78,7 +83,7 @@ async fn main() -> Result<()> {
 }
 
 /// Iniciar el nodo AAMN
-async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
+async fn start_node(port: u16, bootstrap: Option<String>, socks5_port: Option<u16>) -> Result<()> {
     tracing::info!("Starting AAMN node on port {}", port);
 
     // Inicializar identidad del nodo
@@ -119,6 +124,17 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
     let rate_limiter = RateLimiter::new(100); // 100 req/s
 
     tracing::info!("Security engine initialized");
+
+    // Iniciar SOCKS5 si se solicitó
+    if let Some(s_port) = socks5_port {
+        let socks5 = Socks5Server::new(s_port);
+        tokio::spawn(async move {
+            if let Err(e) = socks5.start().await {
+                tracing::error!("SOCKS5 server failed: {}", e);
+            }
+        });
+    }
+
     tracing::info!("Node ready!");
 
     // Canal para tráfico
