@@ -1,358 +1,335 @@
-# 🔐 AAMN — Adaptive Anonymous Mesh Network
-
 <div align="center">
-  <img src="assets/aamn_hero.svg" alt="AAMN Animated Cover" width="100%">
 
-  <br />
+<img src="assets/aamn_hero.svg" alt="AAMN Banner" width="100%" />
 
-  [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge&logo=github)](#)
-  [![Rust](https://img.shields.io/badge/Rust-1.74+-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-  [![License](https://img.shields.io/badge/License-MIT%2FApache_2.0-blue?style=for-the-badge)](#licencia)
-  [![Version](https://img.shields.io/badge/Version-0.2.0-purple?style=for-the-badge)](#)
-  [![Security Audit](https://img.shields.io/badge/Security_Audit-100%25-brightgreen?style=for-the-badge)](#-seguridad)
+# AAMN — Adaptive Anonymous Mesh Network
 
-  <p align="center">
-    <strong>Enrutamiento en malla P2P seguro, anónimo y denegable.</strong><br>
-    <i>Ningún nodo central. Sin IP's rastreables. Criptografía de grado militar.</i>
-  </p>
+**Next-generation encrypted P2P routing engine written in Rust.**
+
+AAMN is an experimental, open-source framework for building fully anonymous,
+end-to-end encrypted peer-to-peer networks. It combines Onion Routing,
+the Noise Protocol (IKpsk2), and a Kademlia DHT to ensure that no single node
+ever knows both the sender and the destination of a message.
+
+[![CI](https://github.com/Maustral/aamn/actions/workflows/ci.yml/badge.svg)](https://github.com/Maustral/aamn/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/Built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
+[![Tests](https://img.shields.io/badge/Tests-60%20passing-brightgreen)](#testing)
+[![Status](https://img.shields.io/badge/Status-Experimental-yellow)](#status)
+
+[🌐 Website](https://maustral.github.io/aamn) · [📖 Docs](docs/) · [🗺️ Roadmap](#roadmap) · [💬 Discussions](https://github.com/Maustral/aamn/discussions)
+
 </div>
 
 ---
 
-## ⚡ Características Principales
+## What is AAMN?
 
-| Característica | Descripción |
-|---------------|-------------|
-| 🔒 **Cifrado Onion** | ChaCha20-Poly1305 con múltiples capas de cifrado |
-| 🌐 **Routing Anónimo** | Mínimo 3 saltos, cada nodo solo conoce el siguiente |
-| 🔑 **Noise Protocol** | Handshake IKpsk2 con Perfect Forward Secrecy |
-| 🛡️ **Protección de Tráfico** | Padding fijo de 1450 bytes, traffic shaping |
-| ⚡ **Alto Rendimiento** | QUIC transport, DHT Kademlia distribuido |
-| 🔄 **Auto-escalable** | Descubrimiento de nodos sin servidores centrales |
+AAMN (Adaptive Anonymous Mesh Network) is a protocol engine that lets nodes communicate anonymously over an untrusted network. It is designed for:
 
----
+- **Privacy-preserving communications** — neither relays nor observers can correlate sender and receiver.
+- **Decentralized architectures** — no servers, no central authority, no single point of failure.
+- **High-security environments** — every cryptographic primitive is chosen for forward secrecy and modern auditability.
 
-## 📋 Índice
-
-1. [Instalación](#-instalación)
-2. [Uso](#-uso)
-3. [Configuración](#-configuración)
-4. [Arquitectura](#-arquitectura)
-5. [Seguridad](#-seguridad)
-6. [API](#-api)
-7. [Monitoreo](#-monitoreo)
-8. [Contribución](#-contribución)
-9. [Licencia](#-licencia)
+> ⚠️ **Status: Experimental / Early Development.**  
+> AAMN is not production-ready. APIs may break between releases.
 
 ---
 
-## 🚀 Instalación
+## Features
 
-### Requisitos
+- 🧅 **Multi-layer Onion Encryption** — ChaCha20-Poly1305 wraps each hop; relays peel only their own layer.
+- 🔑 **Noise Protocol IKpsk2** — Mutually authenticated X25519 key exchange with a pre-shared key, providing forward secrecy.
+- 🌐 **Kademlia DHT** — Fully decentralized peer discovery with XOR-distance routing and k-buckets.
+- 🚦 **Traffic Analysis Protection** — Fixed 512-byte cells and token-bucket rate limiting disguise real traffic.
+- ⚡ **QUIC Transport** — Multiplexed, low-latency connections over the modern QUIC protocol with TLS 1.3.
+- 🔐 **Ed25519 Node Identity** — Cryptographically verifiable node identities with no PKI dependency.
+- 📊 **Prometheus Metrics** — Built-in metrics for bandwidth, latency, and peer counts.
+- 🦀 **Written in Rust** — Memory safety without a garbage collector; zero unsafe blocks.
 
-- **Rust 1.70+** con soporte para `nightly`
-- **Windows 10/11** o **Linux** (macOS en desarrollo)
-- **Privilegios de Administrador** (para crear interfaz TUN)
-- **wintun.dll** (solo Windows)
+---
 
-### Compilación
+## Quick Start
+
+### Requirements
+
+- [Rust](https://rustup.rs/) 1.75 or later
+- `cargo` (included with Rust)
+
+### Installation
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/AAMN-Network/AAMN.git
-cd AAMN
+# Clone the repository
+git clone https://github.com/Maustral/aamn.git
+cd aamn
 
-# Compilar en modo debug
-cargo build
-
-# Compilar en modo release (recomendado para producción)
+# Build in release mode
 cargo build --release
+
+# Run your first AAMN node
+./target/release/aamn start --port 9000
 ```
 
-### Configuración Inicial
+### Basic Usage
 
-Ver [INSTALL.md](docs/INSTALL.md) para instrucciones detalladas.
+```bash
+# Start a node on port 9000
+aamn start --port 9000
+
+# Start and connect to a bootstrap peer
+aamn start --port 9000 --bootstrap 203.0.113.5:9000
+
+# Check node status
+aamn status
+
+# Stop the node
+aamn stop
+
+# Run with verbose logging
+aamn -v start --port 9000
+```
 
 ---
 
-## 📖 Uso
-
-### Iniciar un Nodo
-
-```bash
-# Iniciar con configuración por defecto
-cargo run --release --bin aamn
-
-# Especificar puerto
-cargo run --release -- --port 9000
-
-# Usar archivo de configuración personalizado
-cargo run --release -- --config config.toml
-```
-
-### Conectar a la Red
-
-```bash
-# Conectar a nodos bootstrap
-cargo run --release -- --bootstrap bootstrap.aamn.network:9000
-
-# Modo daemon en background
-cargo run --release -- --daemon
-```
-
-Ver [USAGE.md](docs/USAGE.md) para más ejemplos.
-
----
-
-## ⚙️ Configuración
-
-Crear archivo `config.toml`:
+## Example — Node Configuration
 
 ```toml
+# aamn.toml — Node configuration file
+
 [network]
-listen_addr = "0.0.0.0:9000"
-use_quic = true
-max_connections = 100
+listen_port     = 9000
+max_peers       = 50
+bootstrap_nodes = ["203.0.113.5:9000", "198.51.100.8:9000"]
 
 [security]
-onion_layers = 3
-enable_hmac = true
-enable_pow = true
-pow_difficulty = 20
+psk             = "your-pre-shared-key-here"
+min_circuit_len = 3          # Minimum onion hops
 
 [performance]
-max_packet_size = 1450
-fragment_size = 512
-rate_limit_rps = 100
+cell_size_bytes = 512        # Fixed cell size for traffic shaping
+rate_limit_rps  = 100        # Requests per second per peer
 
 [logging]
-level = "info"
-file_enabled = true
-file_path = "aamn.log"
+level           = "info"
+json            = false
 ```
-
-Ver [CONFIG.md](docs/CONFIG.md) para todas las opciones.
 
 ---
 
-## 🏗️ Arquitectura
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      AAMN Network                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐ │
-│  │ Client  │───▶│ Node A  │───▶│ Node B  │───▶│ Node C  │ │
-│  │ (Entry) │    │ (Relay) │    │ (Relay) │    │(Exit)   │ │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘ │
-│       │              │              │              │       │
-│       ▼              ▼              ▼              ▼       │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │              ONION ENCRYPTION LAYERS                │  │
-│  │  Layer 3: Public Key of Node C                      │  │
-│  │  Layer 2: Public Key of Node B + Encrypted Payload  │  │
-│  │  Layer 1: Public Key of Node A + Encrypted Payload  │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Componentes Principales
-
-| Módulo | Descripción |
-|--------|-------------|
-| `src/crypto.rs` | Cifrado onion, X25519, Ed25519, ChaCha20-Poly1305 |
-| `src/handshake.rs` | Noise Protocol IKpsk2, forward secrecy |
-| `src/dht.rs` | Kademlia DHT para descubrimiento de nodos |
-| `src/circuit.rs` | Gestión de circuitos onion |
-| `src/transport.rs` | QUIC transport con TLS 1.3 |
-| `src/rate_limiter.rs` | Token Bucket + Sliding Window |
-| `src/padding.rs` | Cell-based routing, traffic shaping |
-
-Ver [PROTOCOL.md](docs/PROTOCOL.md) para detalles del protocolo.
-
----
-
-## 🔒 Seguridad
-
-### Criptografía
-
-| Componente | Algoritmo | Notas |
-|-----------|-----------|-------|
-| Cifrado Simétrico | ChaCha20-Poly1305 | AEAD seguro |
-| Intercambio de Claves | X25519 | Curve25519 DH |
-| Firmas Digitales | Ed25519 | Identidades inmutables |
-| Protocolo de Enlace | Noise IKpsk2 | Perfect Forward Secrecy |
-| Hashing | BLAKE2b/SHA-256 | Integridad y HMAC |
-| RNG | OsRng | Aleatoriedad segura |
-
-### Auditoría de Seguridad
-
-El proyecto ha sido auditado internamente. Ver [SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md).
-
-### Checklist de Seguridad
-
-- ✅ Handshake Noise real implementado
-- ✅ Forward secrecy habilitado
-- ✅ Verificación de certificados TLS
-- ✅ Nonce reuse prevention
-- ✅ KDF estándar (HKDF)
-- ✅ Padding de tráfico cell-based
-- ✅ Rate limiting global
-- ✅ Detección de DDoS
-- ✅ TLS mutual authentication
-- ✅ Logging de seguridad
-
----
-
-## 📚 API
-
-### Ejemplo: Crear un Mensaje Cifrado
+## Example — Sending an Anonymous Message
 
 ```rust
-use aamn::{OnionEncryptor, NodeIdentity};
+use aamn::{HandshakeManager, OnionEncryptor, NodeIdentity};
 
-// Crear identidad
-let identity = NodeIdentity::generate();
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Generate node identity
+    let identity = NodeIdentity::generate();
+    println!("Node ID: {}", hex::encode(identity.node_id()));
 
-// Cifrar mensaje para múltiples saltos
-let keys = vec![key1, key2, key3];
-let nodes = vec![node1_id, node2_id, node3_id];
-let encrypted = OnionEncryptor::wrap(data, &keys, &nodes)?;
+    // Perform Noise IKpsk2 handshake with a peer
+    let psk = [0u8; 32]; // Use a real PSK in production
+    let manager = HandshakeManager::new(&psk);
+    let (msg, _state) = manager.initiate_handshake(peer_pubkey)?;
+
+    // Wrap payload in 3 onion layers
+    let keys   = [[1u8;32], [2u8;32], [3u8;32]];
+    let relays = [[10u8;32],[11u8;32],[12u8;32]];
+    let cipher = OnionEncryptor::new(&keys);
+    let wrapped = cipher.wrap(b"Hello, anonymous world!", &relays)?;
+
+    println!("Onion-encrypted payload: {} bytes", wrapped.len());
+    Ok(())
+}
 ```
-
-### Ejemplo: Iniciar Handshake
-
-```rust
-use aamn::HandshakeManager;
-
-let psk = b"mi-psk-secreto";
-let manager = HandshakeManager::new(&psk);
-
-// Iniciar handshake como cliente
-let output = manager.initiate_handshake(&peer_public_key)?;
-let message = output.handshake_message;
-```
-
-Ver [API.md](docs/API.md) para la documentación completa.
 
 ---
 
-## 📊 Monitoreo
+## Architecture
 
-### Métricas Prometheus
+```
+┌──────────────────────────────────────────────────────────────┐
+│                         AAMN Node                            │
+│                                                              │
+│  ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐  │
+│  │   CLI   │──▶│  Daemon  │──▶│ Handshake│──▶│ Circuit  │  │
+│  └─────────┘   └──────────┘   │ (Noise)  │   │ (Onion)  │  │
+│                                └──────────┘   └──────────┘  │
+│  ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐  │
+│  │  DHT    │──▶│ Routing  │──▶│ Transport│──▶│ Padding  │  │
+│  │(Kademlia│   │  Table   │   │  (QUIC)  │   │  (512B)  │  │
+│  └─────────┘   └──────────┘   └──────────┘   └──────────┘  │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │           Cryptographic Primitives                  │    │
+│  │  ChaCha20-Poly1305 · X25519 · Ed25519 · BLAKE2      │    │
+│  └─────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Project Structure
+
+```
+aamn/
+├── src/
+│   ├── main.rs           # CLI entry point
+│   ├── lib.rs            # Public library API
+│   ├── handshake.rs      # Noise IKpsk2 protocol
+│   ├── crypto.rs         # Onion encryption & key management
+│   ├── dht.rs            # Kademlia DHT implementation
+│   ├── routing.rs        # Circuit routing table
+│   ├── circuit.rs        # Onion circuit construction
+│   ├── transport.rs      # QUIC transport layer
+│   ├── padding.rs        # Fixed-cell traffic shaping
+│   ├── rate_limiter.rs   # Token-bucket & sliding-window
+│   ├── network.rs        # Global network manager
+│   ├── daemon.rs         # Background service manager
+│   ├── config.rs         # Configuration (TOML)
+│   ├── metrics.rs        # Prometheus metrics
+│   ├── logging.rs        # Structured logging (tracing)
+│   ├── fragment.rs       # Packet fragmentation/reassembly
+│   ├── pow.rs            # Proof-of-work spam prevention
+│   ├── protocol.rs       # Wire protocol definitions
+│   ├── cli.rs            # CLI argument parser (clap)
+│   ├── integration_tests.rs
+│   └── fuzzing.rs        # Security fuzz tests
+├── docs/
+│   ├── INSTALL.md        # Installation guide
+│   ├── USAGE.md          # Usage guide
+│   ├── API.md            # API reference
+│   ├── PROTOCOL.md       # Protocol specification
+│   ├── CONFIG.md         # Configuration reference
+│   ├── SECURITY.md       # Security model
+│   └── ROADMAP.md        # Project roadmap
+├── examples/
+│   ├── basic_node.rs     # Start a simple node
+│   ├── send_message.rs   # Send an anonymous message
+│   └── dht_lookup.rs     # Peer discovery example
+├── assets/
+│   ├── logo.png
+│   ├── banner.png
+│   └── aamn_hero.svg
+├── Cargo.toml
+├── LICENSE
+└── README.md
+```
+
+---
+
+## Roadmap
+
+### v0.2 — Core Protocol *(current)*
+- [x] Noise IKpsk2 handshake
+- [x] Multi-layer onion encryption (ChaCha20-Poly1305)
+- [x] Kademlia DHT peer discovery
+- [x] QUIC transport layer
+- [x] Fixed-cell padding (512 bytes)
+- [x] Token-bucket rate limiting
+- [x] CLI (`start`, `stop`, `status`)
+- [x] 60 unit + integration tests
+- [x] CI/CD (Linux, macOS, Windows)
+
+### v0.3 — Network Hardening *(next)*
+- [ ] Full onion circuit construction across 3+ live hops
+- [ ] Session key rotation every N packets
+- [ ] Guard node selection
+- [ ] Bandwidth shaping (constant-rate cover traffic)
+- [ ] NAT traversal via STUN/TURN
+
+### v0.4 — Ecosystem
+- [ ] SOCKS5 proxy interface
+- [ ] gRPC control API
+- [ ] Web dashboard (metrics visualization)
+- [ ] Docker image
+- [ ] Mobile library (iOS/Android via FFI)
+
+### v1.0 — Production
+- [ ] External security audit
+- [ ] Specification document (RFC-style)
+- [ ] Stable API guarantee
+- [ ] Performance benchmarks published
+
+---
+
+## Testing
 
 ```bash
-# Endpoint de métricas
-http://localhost:9090/metrics
+# Run all unit tests
+cargo test --lib
+
+# Run integration tests only
+cargo test integration
+
+# Run with verbose output
+cargo test -- --nocapture
+
+# Security audit
+cargo audit
 ```
 
-### Métricas Disponibles
-
-| Métrica | Descripción |
-|---------|-------------|
-| `aamn_circuits_active` | Circuitos activos |
-| `aaml_packets_routed` | Paquetes enrutados |
-| `aamn_nodes_connected` | Nodos conectados |
-| `aamn_latency_ms` | Latencia media |
-| `aamn_bandwidth_kbps` | Ancho de banda |
-| `aamn_errors_total` | Errores totales |
-
-Ver [MONITORING.md](docs/MONITORING.md) para dashboards y alertas.
+All 60 tests pass across Linux, macOS, and Windows via GitHub Actions CI.
 
 ---
 
-## 🤝 Contribución
+## Security
 
-### Requisitos
+AAMN takes security seriously. Please read our [Security Policy](docs/SECURITY.md) before reporting vulnerabilities.
 
-- Rust 1.70+
-- Cargo
-- git
+**Do NOT open a public issue for security vulnerabilities.** Instead, email the maintainers or open a [private security advisory](https://github.com/Maustral/aamn/security/advisories/new).
 
-### Configuración de Desarrollo
+### Cryptographic Primitives
+
+| Primitive | Algorithm | Purpose |
+|---|---|---|
+| Symmetric Encryption | ChaCha20-Poly1305 | Onion layer encryption |
+| Key Exchange | X25519 | Diffie-Hellman in Noise handshake |
+| Signatures | Ed25519 | Node identity verification |
+| Hashing | BLAKE2b / SHA-256 | DHT routing, key derivation |
+| KDF | HKDF-SHA256 | Session key derivation |
+| Transport | QUIC + TLS 1.3 | Authenticated relay connections |
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](docs/SECURITY.md) first.
 
 ```bash
-# Fork y clonar
-git clone https://github.com/TU_USUARIO/AAMN.git
-cd AAMN
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/aamn.git
 
-# Crear rama feature
-git checkout -b feature/mi-feature
+# Create a feature branch
+git checkout -b feat/my-feature
 
-# Ejecutar tests
-cargo test
+# Make changes, run tests, format
+cargo test && cargo fmt && cargo clippy -- -D warnings
 
-# Verificar estilo
-cargo fmt --check
-cargo clippy
+# Push and open a Pull Request
+git push origin feat/my-feature
 ```
-
-### Estándares de Código
-
-- Usar `cargo fmt` antes de commits
-- No usar `unsafe` sin justificación
-- Todos los tests deben pasar
-- Documentar APIs públicas
 
 ---
 
-## 📄 Licencia
+## Philosophy
 
-Este proyecto está licenciado bajo **MIT License** - ver [LICENSE](LICENSE) para detalles.
+AAMN is built on three core principles:
 
-### Dependencias y Licencias
-
-| Paquete | Licencia |
-|---------|----------|
-| ring | Apache 2.0 / MIT / ISC |
-| snow | MIT |
-| x25519-dalek | MIT / Apache 2.0 |
-| ed25519-dalek | MIT / Apache 2.0 |
-| chacha20poly1305 | Apache 2.0 / MIT |
-| tokio | MIT |
-| quinn | MIT / Apache 2.0 |
+1. **Anonymity by architecture** — Privacy should not rely on trusting any single party. The protocol guarantees anonymity even if all but one relay is compromised.
+2. **Security by default** — Every connection is encrypted; there is no plaintext fallback. Weak configurations are rejected at startup.
+3. **Performance without compromise** — Rust's zero-cost abstractions mean that cryptographic overhead is minimized without sacrificing safety or correctness.
 
 ---
 
-## ⚠️ Aviso Legal
+## License
 
-```
-Este software se proporciona "tal cual" sin garantías de ningún tipo.
-
-El uso de redes de anonimato puede ser ilegal en ciertas jurisdicciones.
-El autor no se hace responsable del uso que se dé a este software.
-
-El usuario es responsable de:
-- Cumplir con las leyes locales
-- Entender los riesgos de privacidad
-- Verificar la implementación criptográfica
-
-Se recomienda auditar el código antes de uso en producción.
-Consulte con un profesional del derecho antes de operar nodos.
-```
-
-Ver [ASPECTOS_LEGALES.md](ASPECTOS_LEGALES.md) para información completa.
-
----
-
-## 📞 Contacto
-
-| Canal | Enlace |
-|-------|--------|
-| GitHub | [github.com/AAMN-Network/AAMN](https://github.com/AAMN-Network/AAMN) |
-| Creador | [github.com/Maustral](https://github.com/Maustral) |
-| Instagram | [@yojancelm02](https://instagram.com/yojancelm02) |
-| Security | security@aamn.network |
+AAMN is released under the [MIT License](LICENSE). See `LICENSE` for details.
 
 ---
 
 <div align="center">
 
-*Construido con 🔐 y 🦀*
-
-**AAMN** - *Red de comunicaciones anónimas*
+Built with 🦀 by [Maustral](https://github.com/Maustral) · [⭐ Star this repo](https://github.com/Maustral/aamn)
 
 </div>
-

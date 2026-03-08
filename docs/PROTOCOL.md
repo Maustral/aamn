@@ -1,394 +1,187 @@
 # AAMN Protocol Specification
 
+This document describes the AAMN wire protocol, cryptographic design, and message formats.
+
+---
+
 ## Overview
 
-AAMN (Adaptive Anonymous Mesh Network) is a privacy-enhancing network protocol designed to provide anonymous communication through a mix network architecture. The protocol implements onion routing with probabilistic path selection, fragmentation, and layered encryption.
-
-**⚠️ WARNING**: This is a research prototype. Do not use for real communications without a security audit.
-
----
-
-## Table of Contents
-
-1. [Protocol Version](#protocol-version)
-2. [Network Model](#network-model)
-3. [Packet Format](#packet-format)
-4. [Onion Encryption](#onion-encryption)
-5. [Path Selection](#path-selection)
-6. [Fragmentation](#fragmentation)
-7. [Transport Layer](#transport-layer)
-8. [Handshake Protocol](#handshake-protocol)
-9. [Security Considerations](#security-considerations)
+AAMN routes messages through a series of relay nodes (a **circuit**) such that:
+- No relay knows both the sender and the final destination.
+- All traffic is indistinguishable in size (fixed 512-byte cells).
+- Session keys are ephemeral and provide forward secrecy.
 
 ---
 
-## 1. Protocol Version
+## 1. Node Identity
 
-Current version: `1`
+Each node generates an **Ed25519** key pair at first run:
 
-```rust
-pub const PROTOCOL_VERSION: u8 = 1;
+```
+identity_key = Ed25519::generate()
+node_id      = SHA-256(identity_key.public_bytes())
 ```
 
-The protocol version is included in packet headers for version negotiation.
+The `node_id` is a 32-byte value used as the Kademlia key for DHT routing.
 
 ---
 
-## 2. Network Model
+## 2. Handshake — Noise IKpsk2
 
-### 2.1 Node Types
+AAMN uses the **Noise IKpsk2** handshake pattern from the [Noise Protocol Framework](https://noiseprotocol.org/).
 
-| Type | Description | Entry/Exit |
-|------|-------------|------------|
-| Entry Node | First hop in circuit | Entry only |
-| Middle Node | Relay nodes | Both |
-| Exit Node | Final hop to destination | Exit only |
-
-### 2.2 Network Topology
+### Pattern: `Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s`
 
 ```
-Client ----> Entry ----> Middle ----> Exit ----> Destination
-              Node         Node         Node
-              
-              Circuit (3 hops minimum)
+Initiator                              Responder
+─────────────────────────────────────────────────
+e, es, s                →
+                         ←  e, ee, se, psk
 ```
 
-### 2.3 Node Identity
+- `e` — Ephemeral DH key (X25519)
+- `s` — Static identity key (X25519)
+- `es`, `ee`, `se` — DH operations
+- `psk` — Pre-shared key for extra authentication
 
-Each node has a cryptographic identity:
-
-- **Signing Key**: Ed25519 for authentication
-- **Exchange Secret**: X25519 for key exchange
-- **Node ID**: SHA-256 hash of public key (32 bytes)
-
-```rust
-pub struct NodeIdentity {
-    pub signing_key: SigningKey,      // Ed25519
-    pub exchange_secret: StaticSecret, // X25519
-}
-
-impl NodeIdentity {
-    pub fn public_id(&self) -> [u8; 32] {
-        // SHA-256 of verifying key
-    }
-}
-```
+**Result**: Two symmetric session keys:
+- `send_key` — used by the initiator to encrypt outbound data
+- `recv_key` — used by the initiator to decrypt inbound data
 
 ---
 
-## 3. Packet Format
+## 3. Onion Encryption
 
-### 3.1 AAMN Packet Structure
-
-```
-+----------------+----------------+----------------+
-| Header (16B)   | Payload (var)  | Padding (var)  |
-+----------------+----------------+----------------+
-
-Header:
-  - version: u8 (1 byte)
-  - fragment_id: u64 (8 bytes)
-  - flags: u8 (1 byte)
-  - reserved: u48 (6 bytes)
-```
-
-### 3.2 Encrypted Payload (Onion)
+### Cell Structure (512 bytes fixed)
 
 ```
-Before Encryption (per layer):
-+----------------+----------------+----------------+
-| Next Node (32B)| Payload        | HMAC (32B)     |
-+----------------+----------------+----------------+
-
-After Encryption:
-+----------------+----------------+
-| Nonce (12B)    | Ciphertext     |
-+----------------+----------------+
+┌──────────────────────────────────┐
+│ Header (4 bytes)                 │
+│   circuit_id: u16               │
+│   cell_type:  u8                │
+│   flags:      u8                │
+├──────────────────────────────────┤
+│ Payload (up to 492 bytes)        │
+│   [encrypted data]               │
+├──────────────────────────────────┤
+│ Padding (variable, random bytes) │
+└──────────────────────────────────┘
+Total: exactly 512 bytes
 ```
 
-### 3.3 Fragment Format
+### Wrapping Algorithm
+
+For a circuit of N relays `[R1, R2, ..., RN]` with session keys `[K1, K2, ..., KN]`:
 
 ```
-+----------------+----------------+----------------+
-| Frag ID (8B)   | Index (2B)     | Total (2B)     |
-+----------------+----------------+----------------+
-| Data (var)     | HMAC (32B)     |
-+----------------+----------------+
+layer_N   = Encrypt(K_N, payload)
+layer_N-1 = Encrypt(K_{N-1}, layer_N)
+...
+layer_1   = Encrypt(K_1, layer_2)
+
+send(R1, layer_1)
 ```
+
+Each relay `Ri` decrypts its layer to reveal the next hop and forwards the remaining ciphertext.
+
+### Cipher: `ChaCha20-Poly1305`
+
+- **Key**: 256-bit session key
+- **Nonce**: 96-bit, monotonically increasing per session
+- **AAD**: Cell header bytes
 
 ---
 
-## 4. Onion Encryption
+## 4. DHT — Kademlia
 
-### 4.1 Layer Structure
+AAMN uses a **Kademlia** distributed hash table for peer discovery.
 
-Each layer contains:
-1. **Next Node ID**: 32 bytes - Where to forward
-2. **Inner Payload**: The encrypted inner layers
-3. **Layer MAC**: HMAC-SHA256 for authenticity
-
-### 4.2 Encryption Process
-
-```rust
-fn wrap(payload, keys, next_hops) -> wrapped {
-    // Process from innermost to outermost
-    for (key, next_node) in reversed(zip(keys, next_hops)) {
-        layer_data = next_node + current_payload
-        nonce = random(12 bytes)
-        ciphertext = ChaCha20Poly1305(key, nonce, layer_data)
-        current_payload = nonce + ciphertext
-    }
-    return current_payload
-}
-```
-
-### 4.3 Decryption Process
-
-```rust
-fn unwrap(wrapped, key) -> (next_node, inner) {
-    nonce = wrapped[0:12]
-    ciphertext = wrapped[12:]
-    plaintext = ChaCha20Poly1305_decrypt(key, nonce, ciphertext)
-    next_node = plaintext[0:32]
-    inner = plaintext[32:]
-    return (next_node, inner)
-}
-```
-
-### 4.4 Cipher Suite
-
-- **Encryption**: ChaCha20-Poly1305
-- **Key Derivation**: X25519 + HKDF (BLAKE2b)
-- **Authentication**: HMAC-SHA256
-- **Nonce**: Random 12 bytes (per message)
-
----
-
-## 5. Path Selection
-
-### 5.1 Probabilistic Selection
-
-Path selection uses weighted random sampling:
-
-```rust
-fn select_node(available_nodes, weights) -> Node {
-    // Weighted random selection based on:
-    // - Bandwidth (higher = more likely)
-    // - Reputation (higher = more likely)
-    // - Latency (lower = more likely)
-    // - Stake amount (higher = more likely)
-}
-```
-
-### 5.2 Path Constraints
-
-| Parameter | Minimum | Maximum | Default |
-|-----------|---------|---------|---------|
-| Path Length | 2 | 5 | 3 |
-| Entry Node Selection | - | - | Top 20% bandwidth |
-| Exit Node Selection | - | - | Any reputable |
-
-### 5.3 Circuit Rotation
-
-Circuits should be rotated:
-- Every 10 minutes (time-based)
-- After 1GB of traffic (volume-based)
-- On node failure
-
----
-
-## 6. Fragmentation
-
-### 6.1 Fragmentation Strategy
-
-- **Maximum Fragment Size**: 512 bytes (configurable)
-- **Fragment ID**: Unique identifier for reassembly
-- **Total Parts**: Number of fragments
-
-### 6.2 Reassembly
-
-Fragments are reassembled using:
-1. Fragment ID matching
-2. Index ordering
-3. Total parts verification
-4. HMAC verification
-
-### 6.3 Padding
-
-Each fragment is padded to uniform size to prevent traffic analysis.
-
----
-
-## 7. Transport Layer
-
-### 7.1 QUIC Protocol
-
-The transport layer uses QUIC (UDP-based):
-
-```rust
-pub struct TransportLayer {
-    pub endpoint: quinn::Endpoint,
-}
-
-// Connection establishment
-let conn = transport.connect(addr).await?;
-
-// Send packet
-transport.send_packet(&conn, data).await?;
-
-// Receive packets
-while let Some(packet) = transport.listen_packets(&conn).await {
-    // Process
-}
-```
-
-### 7.2 Port Allocation
-
-- **Default Port**: 9000
-- **Ephemeral Range**: 49152-65535
-
----
-
-## 8. Handshake Protocol
-
-### 8.1 Noise Protocol IKpsk2
-
-The handshake uses Noise Protocol Framework with pre-shared keys:
+### Node ID Distance
 
 ```
-Initiator -> Responder: e, es (ephemeral key, static DH)
-Responder -> Initiator: e, ee, s, se (DH operations)
-Initiator -> Responder: s, ss (finalize)
+distance(A, B) = A XOR B   (bitwise, 32 bytes)
 ```
 
-### 8.2 Key Derivation
+### k-Bucket Structure
+
+Each node maintains 256 k-buckets (one per bit of the node ID space). Each bucket holds up to **K=20** peers sorted by last-seen time.
+
+### Messages
+
+| Type | Description |
+|---|---|
+| `PING` | Check if a peer is alive |
+| `PONG` | Response to PING |
+| `FIND_NODE` | Request k closest peers to a target ID |
+| `FOUND_NODES` | Response with peer list |
+| `STORE` | Store a value in the DHT |
+| `FIND_VALUE` | Retrieve a value from the DHT |
+
+### Message Wire Format
 
 ```
-HKDF(Secret, Info) -> Session Keys
-```
-
-### 8.3 Handshake Messages
-
-```rust
-pub struct HandshakeOutput {
-    pub handshake_message: Vec<u8>,
-    pub noise_state: AnyState,
-}
-
-pub struct HandshakeResponse {
-    pub response_message: Vec<u8>,
-    pub verified: bool,
-}
+┌─────────────────────────────────────────┐
+│ transaction_id : [u8; 16]  (16 bytes)  │
+│ msg_type       : u8         (1 byte)   │
+│ sender_id      : [u8; 32]  (32 bytes)  │
+│ payload_len    : u32        (4 bytes)  │
+│ payload        : [u8]                  │
+│ hmac           : [u8; 32]  (32 bytes)  │
+└─────────────────────────────────────────┘
+Minimum length: 85 bytes
 ```
 
 ---
 
-## 9. Security Considerations
+## 5. Transport — QUIC
 
-### 9.1 Threat Model
+All relay-to-relay communication uses **QUIC** (via the `quinn` crate) with:
 
-The protocol protects against:
-- ✅ Traffic analysis
-- ✅ End-to-end correlation
-- ✅ Node compromise (partial)
-- ✅ Passive adversaries
+- Self-signed TLS 1.3 certificates per node (via `rcgen`)
+- Certificate pinning — nodes only accept peers whose certificate hash is registered in the DHT
+- Unidirectional QUIC streams for one-way cell delivery
 
-The protocol does NOT protect against:
-- ⚠️ Active man-in-the-middle
-- ⚠️ Node compromise (full circuit)
-- ⚠️ Global passive adversary
-- ⚠️ Timing attacks (without additional countermeasures)
+---
 
-### 9.2 Attack Mitigations
+## 6. Rate Limiting
 
-| Attack | Mitigation |
-|--------|------------|
-| Traffic Analysis | Onion encryption, padding, chaff traffic |
-| Route Correlation | Multiple paths, random selection |
-| Node Tracing | Layered encryption, HMAC |
-| DoS | Rate limiting, PoW |
+### Token Bucket
 
-### 9.3 Chaff Traffic
+Each peer connection is subject to a token-bucket limiter:
+- Capacity: 100 tokens
+- Refill: 10 tokens/second
+- Cost per packet: 1 token
 
-To prevent statistical traffic analysis, nodes inject random packets (chaff):
+### Sliding Window
 
-```rust
-// Probability: 10% (configurable)
-if random() < config.chaff_probability {
-    generate_noise_packet()
-    send_via_alternative_route()
-}
+A sliding 60-second window tracks request counts per `node_id`. Nodes exceeding the threshold are temporarily blocked.
+
+---
+
+## 7. Proof of Work (Spam Prevention)
+
+To join the network, new nodes must solve a SHA-256 PoW challenge:
+
+```
+Find nonce such that:
+SHA-256(node_id || nonce) starts with N zero bits
 ```
 
----
-
-## 10. Protocol Messages
-
-### 10.1 Message Types
-
-| Type | ID | Description |
-|------|----|-------------|
-| DATA | 0x01 | Encrypted data payload |
-| CONNECT | 0x02 | Connection request |
-| CONNECTED | 0x03 | Connection established |
-| DISCONNECT | 0x04 | Disconnection request |
-| PING | 0x05 | Keepalive |
-| PONG | 0x06 | Keepalive response |
-| ERROR | 0xFF | Error message |
-
-### 10.2 Error Codes
-
-| Code | Description |
-|------|-------------|
-| 0x01 | Invalid packet |
-| 0x02 | Decryption failed |
-| 0x03 | Route not found |
-| 0x04 | Node unavailable |
-| 0x05 | Rate limit exceeded |
+Default difficulty: N = 16 bits.
 
 ---
 
-## 11. Implementation Notes
+## Security Properties
 
-### 11.1 Dependencies
-
-```toml
-# Cryptography
-chacha20poly1305 = "0.10"
-x25519-dalek = "2.0"
-ed25519-dalek = "2.1"
-blake2 = "0.10"
-hmac = "0.12"
-
-# Networking
-quinn = "0.10"
-tokio = "1.36"
-
-# Utilities
-anyhow = "1.0"
-serde = "1.0"
-```
-
-### 11.2 Performance Targets
-
-| Metric | Target |
-|--------|--------|
-| Latency (3-hop) | < 500ms |
-| Throughput | > 10 Mbps |
-| Memory per node | < 100 MB |
-| CPU per packet | < 10 ms |
+| Property | Mechanism |
+|---|---|
+| Confidentiality | ChaCha20-Poly1305 per hop |
+| Forward secrecy | Ephemeral X25519 in Noise handshake |
+| Sender anonymity | Onion routing — relays only see adjacent hops |
+| Traffic analysis resistance | Fixed 512-byte cells, rate limiting |
+| Peer authentication | Ed25519 node identity + PSK |
+| Replay protection | Monotonic AEAD nonces |
 
 ---
 
-## 12. References
-
-- [Tor Protocol Specification](https://gitweb.torproject.org/torspec.git)
-- [Noise Protocol Framework](https://noiseprotocol.org/)
-- [I2P Book](https://geti2p.net/spec)
-- [QUIC Protocol](https://www.rfc-editor.org/rfc/rfc9000)
-
----
-
-*Document Version: 1.0*  
-*Last Updated: 2025*
-
+*For implementation details, see the source code in `src/` and the [API reference](API.md).*
