@@ -15,7 +15,7 @@ ever knows both the sender and the destination of a message.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
 [![Tests](https://img.shields.io/badge/Tests-60%20passing-brightgreen)](#testing)
-[![Status](https://img.shields.io/badge/Status-Experimental-yellow)](#status)
+[![Status](https://img.shields.io/badge/Status-v1.0--Production-blue)](#status)
 
 [🌐 Website](https://maustral.github.io/aamn) · [📖 Docs](docs/) · [🗺️ Roadmap](#roadmap) · [💬 Discussions](https://github.com/Maustral/aamn/discussions)
 
@@ -31,8 +31,8 @@ AAMN (Adaptive Anonymous Mesh Network) is a protocol engine that lets nodes comm
 - **Decentralized architectures** — no servers, no central authority, no single point of failure.
 - **High-security environments** — every cryptographic primitive is chosen for forward secrecy and modern auditability.
 
-> ⚠️ **Status: Experimental / Early Development.**  
-> AAMN is not production-ready. APIs may break between releases.
+> 🛡️ **Status: v1.0 Production Ready.**  
+> AAMN has reached a stable architectural milestone. The Control API (gRPC/REST) is now governed by our compatibility policy.
 
 ---
 
@@ -44,8 +44,17 @@ AAMN (Adaptive Anonymous Mesh Network) is a protocol engine that lets nodes comm
 - 🚦 **Traffic Analysis Protection** — Fixed 512-byte cells and token-bucket rate limiting disguise real traffic.
 - ⚡ **QUIC Transport** — Multiplexed, low-latency connections over the modern QUIC protocol with TLS 1.3.
 - 🔐 **Ed25519 Node Identity** — Cryptographically verifiable node identities with no PKI dependency.
-- 📊 **Prometheus Metrics** — Built-in metrics for bandwidth, latency, and peer counts.
-- 🦀 **Written in Rust** — Memory safety without a garbage collector; zero unsafe blocks.
+- 📊 **Real-time Dashboard** — Premium React-based UI for monitoring mesh topology and traffic.
+- 📦 **Docker Support** — Production-ready containers for distributed deployment.
+- 🛡️ **Security Audited** — Internal cryptographic audit and RFC-style specification provided.
+
+---
+
+## Technical Documentation
+
+- 📖 **[Protocol Specification (RFC)](docs/SPEC.md)** — Deep dive into the AAMN onion routing protocol.
+- 📈 **[Performance Benchmarks](docs/BENCHMARKS.md)** — Throughput and latency results for multicore systems.
+- 🛡️ **[Security Audit](docs/PRODUCTION_AUDIT.md)** — Cryptographic audit and threat model analysis.
 
 ---
 
