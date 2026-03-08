@@ -9,9 +9,13 @@
 
 use crate::crypto::OnionEncryptor;
 use crate::dht::DhtMessage;
+#[cfg(test)]
+use crate::dht::{DhtMessageType, NodeId};
 use crate::fragment::FragmentationManager;
 use crate::handshake::HandshakeManager;
 use crate::padding::Cell;
+#[cfg(test)]
+use crate::padding::CellType;
 use crate::protocol::AAMNPacket;
 
 // =============================================================================

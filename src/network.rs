@@ -252,7 +252,7 @@ mod tests {
             staked_amount: 500,
         });
 
-        let engine = SecurityEngine::new(table);
+        let _engine = SecurityEngine::new(table);
         let original_data = b"Mensaje Ultra Secreto AAMN".to_vec();
 
         // Simulamos una ruta de 3 nodos

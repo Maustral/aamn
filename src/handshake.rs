@@ -511,8 +511,8 @@ mod tests {
         let mgr = HandshakeManager::new(&psk);
 
         // Crear clave pública falsa para testing
-        let mut rng = OsRng;
-        let fake_secret = StaticSecret::random_from_rng(&mut rng);
+        let rng = OsRng;
+        let fake_secret = StaticSecret::random_from_rng(rng);
         let fake_public = X25519PublicKey::from(&fake_secret);
 
         let result = mgr.initiate_handshake(fake_public.as_bytes());
@@ -529,7 +529,7 @@ mod tests {
 
         // Generar una clave de sesión de prueba
         let session_key = mgr.derive_shared_secret(&X25519PublicKey::from(
-            &StaticSecret::random_from_rng(&mut OsRng),
+            &StaticSecret::random_from_rng(OsRng),
         ));
 
         let plaintext = b"Mensaje secreto de prueba";
@@ -556,10 +556,10 @@ mod tests {
 
         // Las claves derivadas deben ser diferentes
         let shared1 = mgr1.derive_shared_secret(&X25519PublicKey::from(
-            &StaticSecret::random_from_rng(&mut OsRng),
+            &StaticSecret::random_from_rng(OsRng),
         ));
         let shared2 = mgr2.derive_shared_secret(&X25519PublicKey::from(
-            &StaticSecret::random_from_rng(&mut OsRng),
+            &StaticSecret::random_from_rng(OsRng),
         ));
 
         assert_ne!(shared1, shared2);

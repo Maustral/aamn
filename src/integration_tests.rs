@@ -8,7 +8,6 @@ mod tests {
     use crate::padding::{Cell, CellType, TrafficPadding, TrafficShaper};
     use crate::protocol::AAMNPacket;
     use crate::rate_limiter::RateLimiter;
-    use std::time::Duration;
 
     fn get_test_psk() -> [u8; 32] {
         let mut psk = [0u8; 32];

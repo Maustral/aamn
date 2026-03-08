@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_start() {
-        let cli = Cli::parse_from(&["aamn", "start", "--port", "8080"]);
+        let cli = Cli::parse_from(["aamn", "start", "--port", "8080"]);
         match cli.command {
             Commands::Start { port, bootstrap } => {
                 assert_eq!(port, 8080);
@@ -102,16 +102,16 @@ mod tests {
 
     #[test]
     fn test_cli_parse_verbose() {
-        let cli = Cli::parse_from(&["aamn", "-v", "status"]);
+        let cli = Cli::parse_from(["aamn", "-v", "status"]);
         assert_eq!(cli.verbose, 1);
     }
 
     #[test]
     fn test_log_level() {
-        let cli = Cli::parse_from(&["aamn", "status"]);
+        let cli = Cli::parse_from(["aamn", "status"]);
         assert_eq!(cli.get_log_level(), "info");
 
-        let cli = Cli::parse_from(&["aamn", "-v", "status"]);
+        let cli = Cli::parse_from(["aamn", "-v", "status"]);
         assert_eq!(cli.get_log_level(), "debug");
     }
 }

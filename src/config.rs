@@ -8,15 +8,13 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     pub network: NetworkConfig,
     pub security: SecurityConfig,
     pub performance: PerformanceConfig,
     pub logging: LoggingConfig,
 }
-
 
 impl Config {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {

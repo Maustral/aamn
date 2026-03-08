@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_init_logging_to_stdout() {
-        let config = LoggingConfig {
+        let _config = LoggingConfig {
             level: Level::DEBUG,
             json: false,
             directory: None,
