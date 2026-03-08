@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package aamn.control;
+
+service NodeControl {
+    // Obtiene el estado global del nodo
+    rpc GetStatus (Empty) returns (NodeStatus);
+    
+    // Lista los pares conectados en la DHT
+    rpc ListPeers (Empty) returns (PeerList);
+    
+    // Fuerza la creación de un paquete de ruido (Cover Traffic)
+    rpc GenerateNoise (Empty) returns (ActionResponse);
+    
+    // Detiene el nodo de forma segura
+    rpc StopNode (Empty) returns (ActionResponse);
+}
+
+message Empty {}
+
+message NodeStatus {
+    string version = 1;
+    string public_key_hex = 2;
+    uint32 active_circuits = 3;
+    uint32 connected_peers = 4;
+    uint64 bytes_sent = 5;
+    uint64 bytes_received = 6;
+    bool is_guard = 7;
+}
+
+message Peer {
+    string node_id_hex = 1;
+    string endpoint = 2;
+    uint32 latency_ms = 3;
+    float reputation = 4;
+}
+
+message PeerList {
+    repeated Peer peers = 1;
+}
+
+message ActionResponse {
+    bool success = 1;
+    string message = 2;
+}

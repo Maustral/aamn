@@ -7,6 +7,7 @@ pub mod dht;
 pub mod error;
 pub mod fragment;
 pub mod fuzzing;
+pub mod grpc;
 pub mod handshake;
 pub mod integration_tests;
 pub mod logging;

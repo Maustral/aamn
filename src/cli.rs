@@ -44,6 +44,10 @@ pub enum Commands {
         /// Habilitar proxy SOCKS5 en el puerto especificado
         #[arg(long)]
         socks5_port: Option<u16>,
+
+        /// Habilitar Control API gRPC en el puerto especificado
+        #[arg(long)]
+        grpc_port: Option<u16>,
     },
 
     /// Detener el nodo en ejecución
@@ -100,10 +104,12 @@ mod tests {
                 port,
                 bootstrap,
                 socks5_port,
+                grpc_port,
             } => {
                 assert_eq!(port, 8080);
                 assert_eq!(bootstrap, None);
                 assert_eq!(socks5_port, None);
+                assert_eq!(grpc_port, None);
             }
             _ => panic!("Expected Start command"),
         }

@@ -6,6 +6,7 @@ use aamn::cli::{Cli, Commands};
 use aamn::crypto::NodeIdentity;
 use aamn::daemon::DaemonManager;
 use aamn::error::AAMNError;
+use aamn::grpc::start_grpc_server;
 use aamn::logging::{self, LoggingConfig};
 use aamn::metrics::NetworkMetrics;
 use aamn::network::SecurityEngine;
@@ -15,7 +16,8 @@ use aamn::socks5::Socks5Server;
 use anyhow::Result;
 use chrono::Utc;
 use clap::Parser;
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex as TokioMutex};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -50,8 +52,9 @@ async fn main() -> Result<()> {
             port,
             bootstrap,
             socks5_port,
+            grpc_port,
         } => {
-            start_node(port, bootstrap, socks5_port).await?;
+            start_node(port, bootstrap, socks5_port, grpc_port).await?;
         }
 
         Commands::Stop => {
@@ -83,7 +86,12 @@ async fn main() -> Result<()> {
 }
 
 /// Iniciar el nodo AAMN
-async fn start_node(port: u16, bootstrap: Option<String>, socks5_port: Option<u16>) -> Result<()> {
+async fn start_node(
+    port: u16,
+    bootstrap: Option<String>,
+    socks5_port: Option<u16>,
+    grpc_port: Option<u16>,
+) -> Result<()> {
     tracing::info!("Starting AAMN node on port {}", port);
 
     // Inicializar identidad del nodo
@@ -115,10 +123,11 @@ async fn start_node(port: u16, bootstrap: Option<String>, socks5_port: Option<u1
     }
 
     // Inicializar motor de seguridad
-    let engine = SecurityEngine::new(table);
+    let engine = Arc::new(SecurityEngine::new(table.clone()));
+    let routing_table_arc = Arc::new(TokioMutex::new(table));
 
     // Inicializar métricas
-    let _metrics = NetworkMetrics::new();
+    let metrics = NetworkMetrics::new();
 
     // Inicializar rate limiter
     let rate_limiter = RateLimiter::new(100); // 100 req/s
@@ -127,10 +136,22 @@ async fn start_node(port: u16, bootstrap: Option<String>, socks5_port: Option<u1
 
     // Iniciar SOCKS5 si se solicitó
     if let Some(s_port) = socks5_port {
-        let socks5 = Socks5Server::new(s_port);
+        let socks5 = Socks5Server::new(s_port, engine.clone());
         tokio::spawn(async move {
             if let Err(e) = socks5.start().await {
                 tracing::error!("SOCKS5 server failed: {}", e);
+            }
+        });
+    }
+
+    // Iniciar gRPC Control API si se solicitó
+    if let Some(g_port) = grpc_port {
+        let engine_clone = engine.clone();
+        let rt_clone = routing_table_arc.clone();
+        let metrics_clone = metrics.clone();
+        tokio::spawn(async move {
+            if let Err(e) = start_grpc_server(g_port, rt_clone, engine_clone, metrics_clone).await {
+                tracing::error!("gRPC server failed: {}", e);
             }
         });
     }
@@ -162,8 +183,8 @@ async fn start_node(port: u16, bootstrap: Option<String>, socks5_port: Option<u1
             // Cifrado onion
             match engine.protect_traffic_auto(frag_data, 3) {
                 Ok(safe_packet) => {
-                    _metrics.inc_packets_sent(1);
-                    _metrics.add_bytes_encrypted(safe_packet.payload.len() as u64);
+                    metrics.inc_packets_sent(1);
+                    metrics.add_bytes_encrypted(safe_packet.payload.len() as u64);
                     tracing::trace!("Packet protected and sent");
                 }
                 Err(e) => {
