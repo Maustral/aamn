@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CELL_HEADER_SIZE","CELL_PAYLOAD_SIZE","CELL_SIZE"],"enum":["CellType"],"struct":["Cell","CellHeader","CoverTrafficManager","TrafficPadding","TrafficShaper"]};

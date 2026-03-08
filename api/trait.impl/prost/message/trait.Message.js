@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["aamn",[["impl <a class=\"trait\" href=\"https://docs.rs/prost/0.12.6/prost/message/trait.Message.html\" title=\"trait prost::message::Message\">Message</a> for <a class=\"struct\" href=\"aamn/grpc/pb/struct.ActionResponse.html\" title=\"struct aamn::grpc::pb::ActionResponse\">ActionResponse</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/prost/0.12.6/prost/message/trait.Message.html\" title=\"trait prost::message::Message\">Message</a> for <a class=\"struct\" href=\"aamn/grpc/pb/struct.Empty.html\" title=\"struct aamn::grpc::pb::Empty\">Empty</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/prost/0.12.6/prost/message/trait.Message.html\" title=\"trait prost::message::Message\">Message</a> for <a class=\"struct\" href=\"aamn/grpc/pb/struct.NodeStatus.html\" title=\"struct aamn::grpc::pb::NodeStatus\">NodeStatus</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/prost/0.12.6/prost/message/trait.Message.html\" title=\"trait prost::message::Message\">Message</a> for <a class=\"struct\" href=\"aamn/grpc/pb/struct.Peer.html\" title=\"struct aamn::grpc::pb::Peer\">Peer</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/prost/0.12.6/prost/message/trait.Message.html\" title=\"trait prost::message::Message\">Message</a> for <a class=\"struct\" href=\"aamn/grpc/pb/struct.PeerList.html\" title=\"struct aamn::grpc::pb::PeerList\">PeerList</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1388]}

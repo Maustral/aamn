@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DaemonError","DaemonState"],"struct":["DaemonInfo","DaemonManager"]};
