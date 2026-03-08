@@ -63,7 +63,7 @@ impl TransportLayer {
             }
         }
 
-        let mut client_config = ClientConfig::with_root_certificates(roots);
+        let client_config = ClientConfig::with_root_certificates(roots);
         Ok(client_config)
     }
 

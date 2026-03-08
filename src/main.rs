@@ -120,9 +120,9 @@ async fn start_node(
             reputation: 0.99,
             staked_amount: (5000 / (i + 1)) as u64,
             is_guard: i < 2,
-            can_enter: i < 2,          // primeros nodos actúan como entry/guards
-            can_middle: true,         // todos pueden ser intermedios
-            can_exit: i >= 2,         // últimos nodos preferidos como salida
+            can_enter: i < 2, // primeros nodos actúan como entry/guards
+            can_middle: true, // todos pueden ser intermedios
+            can_exit: i >= 2, // últimos nodos preferidos como salida
         });
     }
 

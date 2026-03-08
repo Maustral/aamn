@@ -163,13 +163,7 @@ impl PathFinder {
 
             let role_filtered: Vec<NodeProfile> = available_nodes
                 .iter()
-                .filter(|n| {
-                    if is_last {
-                        n.can_exit
-                    } else {
-                        n.can_middle
-                    }
-                })
+                .filter(|n| if is_last { n.can_exit } else { n.can_middle })
                 .cloned()
                 .collect();
 
@@ -254,6 +248,9 @@ mod tests {
                 reputation: 0.9 - (i as f32 * 0.05),
                 staked_amount: 1000 - (i * 100) as u64,
                 is_guard: i == 0, // El primer nodo es el único guard
+                can_enter: true,
+                can_middle: true,
+                can_exit: true,
             });
         }
 

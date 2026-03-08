@@ -11,15 +11,20 @@
 
 use aamn::{
     crypto::{NodeIdentity, OnionEncryptor},
-    handshake::HandshakeManager,
     padding::{Cell, CellType},
 };
 
 fn main() -> anyhow::Result<()> {
     // ── Step 1: Generate node identity ──────────────────────────────
     let identity = NodeIdentity::generate();
-    println!("✅ Node ID: {}", hex::encode(identity.node_id()));
-    println!("   Public key: {}", hex::encode(identity.public_key()));
+    println!("✅ Node ID: {}", hex::encode(identity.public_id()));
+    // For the exchange public key:
+    use aamn::crypto::X25519PublicKey;
+    let exchange_pub = X25519PublicKey::from(&identity.exchange_secret);
+    println!(
+        "   Public exchange key: {}",
+        hex::encode(exchange_pub.as_bytes())
+    );
 
     // ── Step 2: Prepare session keys (normally from handshake) ──────
     // In production these come from the Noise IKpsk2 handshake.
@@ -40,15 +45,14 @@ fn main() -> anyhow::Result<()> {
     println!("\n📨 Original message ({} bytes):", message.len());
     println!("   {:?}", std::str::from_utf8(message)?);
 
-    let encryptor = OnionEncryptor::new(relay_keys);
-    let wrapped = encryptor.wrap(message, relay_ids)?;
+    let wrapped = OnionEncryptor::wrap(message, relay_keys, relay_ids)?;
 
     println!("\n🧅 After 3-layer onion encryption:");
     println!("   Wrapped size: {} bytes", wrapped.len());
     println!("   First 32 bytes (hex): {}", hex::encode(&wrapped[..32]));
 
     // ── Step 4: Pack into a fixed-size 512-byte cell ────────────────
-    let cell = Cell::new(42, CellType::Data, 0, &wrapped)?;
+    let cell = Cell::new(42, CellType::Data, 0, wrapped)?;
     let cell_bytes = cell.to_bytes();
 
     println!("\n📦 Cell (fixed 512 bytes):");

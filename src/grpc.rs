@@ -14,11 +14,11 @@ use axum::{
     Router,
 };
 use serde_json::{json, Value};
+use std::env;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
-use std::env;
 
 // Incluye el código auto-generado por `tonic-build` desde proto/control.proto
 pub mod pb {
@@ -53,7 +53,8 @@ impl ControlService {
 
     /// Autorización simple basada en token para la API de control gRPC.
     /// Si no hay token configurado, se permite el acceso (modo legacy),
-    /// pero en producción se recomienda siempre establecer AAMN_CONTROL_TOKEN.
+    /// but in production se recomienda siempre establecer AAMN_CONTROL_TOKEN.
+    #[allow(clippy::result_large_err)]
     fn authorize<T>(&self, req: &Request<T>) -> Result<(), Status> {
         if let Some(expected) = &self.admin_token {
             let metadata = req.metadata();
@@ -132,10 +133,7 @@ impl NodeControl for ControlService {
         }
     }
 
-    async fn stop_node(
-        &self,
-        request: Request<Empty>,
-    ) -> Result<Response<ActionResponse>, Status> {
+    async fn stop_node(&self, request: Request<Empty>) -> Result<Response<ActionResponse>, Status> {
         self.authorize(&request)?;
 
         // Podría lanzar una señal de parada interna a través de un tokio::sync::Notify

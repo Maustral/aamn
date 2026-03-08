@@ -17,11 +17,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Load configuration (or use defaults)
     let config = Config::default();
-    tracing::info!("Starting AAMN node on port {}", config.network.listen_port);
+    tracing::info!("Starting AAMN node on {}", config.network.listen_addr);
 
     // Create and start the daemon manager
     let daemon = DaemonManager::new();
-    let info = daemon.start(config.network.listen_port, false).await?;
+    let info = daemon
+        .start(config.network.listen_addr.port(), false)
+        .await?;
 
     tracing::info!("Node started — PID: {}, Port: {}", info.pid, info.port);
 

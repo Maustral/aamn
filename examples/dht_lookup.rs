@@ -20,7 +20,8 @@ async fn main() -> anyhow::Result<()> {
         vec!["203.0.113.5:9000".parse()?, "198.51.100.8:9000".parse()?];
 
     // Create DHT manager
-    let dht = DhtManager::new(bootstrap);
+    let local_id = NodeId::generate();
+    let dht = DhtManager::new(local_id, bootstrap);
 
     // Generate a random target node ID to search for
     let target_id = NodeId::generate();
@@ -30,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     let closest = dht.find_node(target_id.clone()).await?;
     println!("📡 Found {} closest nodes:", closest.len());
     for node in &closest {
-        println!("   {} @ {}", hex::encode(&node.id.0), node.addr);
+        println!("   {} @ {}", hex::encode(&node.id.0), node.address);
     }
 
     // Store a value in the DHT
@@ -40,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n💾 Stored value in DHT under key: {}", hex::encode(&key));
 
     // Retrieve it back
-    match dht.get(&key).await? {
+    match dht.find_value(&key).await? {
         Some(v) => println!("✅ Retrieved: {:?}", std::str::from_utf8(&v)?),
         None => println!("❌ Value not found (expected in standalone example)"),
     }
