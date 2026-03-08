@@ -209,16 +209,18 @@ impl DaemonManager {
 
         // Enviar señal de terminación al proceso hijo
         {
-            let pid = self.child_pid.lock().await;
-            if let Some(child_pid) = *pid {
-                #[cfg(windows)]
-                {
+            #[cfg(windows)]
+            {
+                let pid = self.child_pid.lock().await;
+                if let Some(child_pid) = *pid {
                     use std::process::Command;
                     let _ = Command::new("taskkill")
                         .args(["/PID", &child_pid.to_string()])
                         .output();
                 }
             }
+            #[cfg(not(windows))]
+            let _ = self.child_pid.lock().await;
         }
 
         // Actualizar estado final
