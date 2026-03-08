@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # AAMN Primary Node (Bootstrap Node)
+  aamn-node:
+    build: .
+    image: aamn/node:v0.4
+    ports:
+      - "9000:9000" # P2P
+      - "1080:1080" # SOCKS5
+      - "50051:50051" # gRPC
+      - "50052:50052" # REST
+    volumes:
+      - aamn-data:/root/.aamn
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+
+  # AAMN Web Dashboard
+  aamn-dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    image: aamn/dashboard:v0.4
+    ports:
+      - "80:80" # Public Web
+    depends_on:
+      - aamn-node
+    restart: unless-stopped
+
+volumes:
+  aamn-data:

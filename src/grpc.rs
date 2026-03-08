@@ -6,6 +6,7 @@
 use crate::metrics::NetworkMetrics;
 use crate::network::SecurityEngine;
 use crate::routing::RoutingTable;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
@@ -49,7 +50,7 @@ impl NodeControl for ControlService {
             public_key_hex,
             active_circuits: 0, // En un futuro leer desde circuit_manager
             connected_peers: self.routing_table.lock().await.get_all_nodes().len() as u32,
-            bytes_sent: self.metrics.total_bytes_encrypted(),
+            bytes_sent: self.metrics.bytes_encrypted.load(Ordering::Relaxed),
             bytes_received: 0, // Leer de métricas rx
             is_guard: false,   // Por defecto si no esta parseado del config
         };
@@ -105,21 +106,96 @@ impl NodeControl for ControlService {
     }
 }
 
-/// Inicia el servidor gRPC en segundo plano
+/// Inicia el servidor gRPC y un Gateway REST en segundo plano
 pub async fn start_grpc_server(
     port: u16,
     routing_table: Arc<Mutex<RoutingTable>>,
     engine: Arc<SecurityEngine>,
     metrics: Arc<NetworkMetrics>,
 ) -> anyhow::Result<()> {
-    let addr = format!("127.0.0.1:{}", port).parse()?;
-
-    let control_service = ControlService::new(routing_table, engine, metrics);
+    // 1. Iniciar gRPC en port
+    let grpc_addr = format!("127.0.0.1:{}", port).parse()?;
+    let control_service =
+        ControlService::new(routing_table.clone(), engine.clone(), metrics.clone());
     let server = NodeControlServer::new(control_service);
 
-    tracing::info!("📡 Start gRPC Control API on {}", addr);
+    let _ = tower_http::cors::CorsLayer::permissive();
 
-    Server::builder().add_service(server).serve(addr).await?;
+    tracing::info!("📡 Start gRPC Control API on {}", grpc_addr);
+    tokio::spawn(async move {
+        let _ = Server::builder()
+            .accept_http1(true)
+            .add_service(tonic_web::enable(server))
+            .serve(grpc_addr)
+            .await;
+    });
+
+    // 2. Iniciar REST API (REST JSON Gateway) en port + 1 para React Dashboard (Windows friendly)
+    use axum::{
+        extract::State,
+        response::Json,
+        routing::{get, post},
+        Router,
+    };
+    use serde_json::{json, Value};
+
+    let rest_port = port + 1;
+    let rest_addr = format!("127.0.0.1:{}", rest_port);
+    tracing::info!("🌐 Start REST Gateway API on {}", rest_addr);
+
+    #[derive(Clone)]
+    struct AppState {
+        rt: Arc<Mutex<RoutingTable>>,
+        eng: Arc<SecurityEngine>,
+        met: Arc<NetworkMetrics>,
+    }
+
+    let state = AppState {
+        rt: routing_table,
+        eng: engine,
+        met: metrics,
+    };
+
+    let app = Router::new()
+        .route("/api/status", get(|State(s): State<AppState>| async move {
+            Json(json!({
+                "version": "0.3.0",
+                "public_key_hex": hex::encode(s.eng.identity.public_id()),
+                "active_circuits": 0,
+                "connected_peers": s.rt.lock().await.get_all_nodes().len(),
+                "bytes_sent": s.met.bytes_encrypted.load(Ordering::Relaxed),
+                "bytes_received": 0,
+                "is_guard": false
+            }))
+        }))
+        .route("/api/peers", get(|State(s): State<AppState>| async move {
+            let nodes = s.rt.lock().await.get_all_nodes();
+            let mut peers: Vec<Value> = Vec::new();
+            for node in nodes {
+                peers.push(json!({
+                    "node_id_hex": hex::encode(node.id),
+                    "endpoint": node.endpoint,
+                    "latency_ms": node.latency_ms,
+                    "reputation": node.reputation
+                }));
+            }
+            Json(peers)
+        }))
+        .route("/api/noise", post(|State(s): State<AppState>| async move {
+            match s.eng.generate_noise_packet() {
+                Ok(_) => Json(json!({"success": true, "message": "Paquete de ruido forjado exitosamente."})),
+                Err(e) => Json(json!({"success": false, "message": format!("Error: {}", e)})),
+            }
+        }))
+        .route("/api/stop", post(|| async {
+            tracing::warn!("REST: Received StopNode request!");
+            Json(json!({"success": true, "message": "Parada iniciada"}))
+        }))
+        .layer(tower_http::cors::CorsLayer::permissive())
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind(&rest_addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
