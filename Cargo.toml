@@ -1,7 +1,23 @@
 [package]
 name = "aamn"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
+authors = ["Maustral"]
+description = "Adaptive Anonymous Mesh Network - encrypted P2P onion routing engine"
+license = "MIT"
+repository = "https://github.com/Maustral/aamn"
+
+[[example]]
+name = "basic_node"
+path = "examples/basic_node.rs"
+
+[[example]]
+name = "send_message"
+path = "examples/send_message.rs"
+
+[[example]]
+name = "dht_lookup"
+path = "examples/dht_lookup.rs"
 
 [dependencies]
 # Cryptography
@@ -44,6 +60,10 @@ thiserror = "1.0"                                          # Errores
 directories = "5.0"                                        # Paths del sistema
 toml = "0.8"                                               # Config file format
 parking_lot = "0.12"                                       # Synchronization primitives
+
+# Async utilities
+tokio-util = { version = "0.7", features = ["full"] }
+futures = "0.3"
 
 [dev-dependencies]
 tokio-test = "0.4"

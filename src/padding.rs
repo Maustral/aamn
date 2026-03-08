@@ -7,6 +7,9 @@
 
 use anyhow::{anyhow, Result};
 use rand::{rngs::OsRng, Rng};
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio::time::{interval_at, Instant};
 
 /// Tamaño fijo de celda (similar a Tor's 512 bytes)
 pub const CELL_SIZE: usize = 512;
@@ -247,6 +250,68 @@ impl TrafficPadding {
 impl Default for TrafficPadding {
     fn default() -> Self {
         Self::new()
+    }
+}
+///
+/// Emite paquetes a un ritmo constante configurado.
+/// Si hay paquetes reales para enviar, se priorizan.
+/// Si no, emite paquetes de padding para rellenar el ancho de banda y mitigar análisis estadístico.
+pub struct CoverTrafficManager {
+    /// Tasa de envío objetivo (celdas por segundo)
+    cells_per_second: u32,
+    /// Generador de padding activo
+    generator_active: bool,
+}
+
+impl CoverTrafficManager {
+    /// Inicializa un gestor de tráfico constante
+    pub fn new(cells_per_second: u32) -> Self {
+        Self {
+            cells_per_second,
+            generator_active: false,
+        }
+    }
+
+    /// Inicia un bucle asíncrono que emite tráfico de cover a ritmo constante.
+    /// Retorna un channel por donde se pueden recibir las celdas a enviar por la red.
+    pub fn start_generator(&mut self) -> mpsc::Receiver<Cell> {
+        let (tx, rx) = mpsc::channel(100);
+        let cps = self.cells_per_second.max(1);
+        let duration = Duration::from_millis(1000 / cps as u64);
+
+        self.generator_active = true;
+
+        tokio::spawn(async move {
+            let start = Instant::now() + duration;
+            let mut interval = interval_at(start, duration);
+
+            loop {
+                interval.tick().await;
+
+                // Generar celda de padding (circuit_id 0 = dummy padding)
+                let mut payload = vec![0u8; CELL_PAYLOAD_SIZE];
+                rand::thread_rng().fill(&mut payload[..]);
+
+                if let Ok(cell) = Cell::new(0, CellType::Padding, 0, payload) {
+                    // Si el canal está lleno o cerrado, ignoramos
+                    if tx.try_send(cell).is_err() {
+                        // Receptor desconectado o buffer lleno (posible congestión)
+                    }
+                }
+            }
+        });
+
+        rx
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.generator_active
+    }
+}
+
+impl Default for CoverTrafficManager {
+    fn default() -> Self {
+        Self::new(10) // Por defecto: 10 celdas/sec -> ~5KB/s
     }
 }
 

@@ -105,6 +105,7 @@ async fn start_node(port: u16, bootstrap: Option<String>) -> Result<()> {
             bandwidth_kbps: 10000 / (i + 1),
             reputation: 0.99,
             staked_amount: (5000 / (i + 1)) as u64,
+            is_guard: i < 2,
         });
     }
 

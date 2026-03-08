@@ -17,6 +17,9 @@ use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 #[allow(dead_code)]
 const SESSION_KEY_LEN: usize = 32;
 
+/// Frecuencia de rotación de claves de sesión (en número de paquetes)
+pub const KEY_ROTATION_INTERVAL: u64 = 1000;
+
 /// Salida del handshake inicial
 #[derive(Debug, Clone)]
 pub struct HandshakeOutput {
@@ -43,6 +46,8 @@ pub struct SessionState {
     pub send_nonce: u64,
     /// Nonce para recepción
     pub recv_nonce: u64,
+    /// Contador de paquetes para forzar rotación
+    pub packet_count: u64,
 }
 
 /// Gestor de Handshake usando Noise Protocol Framework
@@ -307,6 +312,7 @@ impl HandshakeManager {
             recv_key,
             send_nonce: 0,
             recv_nonce: 0,
+            packet_count: 0,
         };
 
         // Almacenar sesión
@@ -371,6 +377,30 @@ impl HandshakeManager {
         self.sessions.read().get(session_id).cloned()
     }
 
+    /// Incrementa el contador de paquetes de una sesión y la rota si es necesario.
+    /// Retorna un boolean indicando si se rotaron las claves.
+    pub fn increment_and_check_rotation(&self, session_id: &[u8; 32]) -> Result<bool> {
+        let mut needs_rotation = false;
+        {
+            let mut sessions = self.sessions.write();
+            if let Some(session) = sessions.get_mut(session_id) {
+                session.packet_count += 1;
+                if session.packet_count >= KEY_ROTATION_INTERVAL {
+                    needs_rotation = true;
+                }
+            } else {
+                return Err(anyhow::anyhow!("Sesión no encontrada"));
+            }
+        }
+
+        if needs_rotation {
+            self.rotate_session_keys(session_id)?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     /// ✅ FASE 2: Rota las claves de sesión para mantener Forward Secrecy
     /// Genera nuevas claves a partir de la clave compartida existente
     pub fn rotate_session_keys(&self, session_id: &[u8; 32]) -> Result<SessionState> {
@@ -411,6 +441,7 @@ impl HandshakeManager {
                 recv_key: new_recv_key,
                 send_nonce: u64::from_le_bytes(send_nonce_bytes),
                 recv_nonce: u64::from_le_bytes(recv_nonce_bytes),
+                packet_count: 0,
             };
 
             // Actualizar la sesión
@@ -462,6 +493,7 @@ impl HandshakeManager {
             recv_key,
             send_nonce: 0,
             recv_nonce: 0,
+            packet_count: 0,
         };
 
         // Almacenar sesión

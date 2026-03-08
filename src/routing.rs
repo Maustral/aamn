@@ -14,12 +14,14 @@ pub struct NodeProfile {
     pub bandwidth_kbps: u32,
     pub reputation: f32,    // 0.0 a 1.0
     pub staked_amount: u64, // Cantidad de tokens depositados (Proof-of-Stake)
+    pub is_guard: bool,     // Si este nodo está autorizado como guard node
 }
 
 /// Tabla de Routing basada en DHT (Simplificada para el prototipo).
 /// En una implementación real, esto usaría buckets de Kademlia.
 pub struct RoutingTable {
     nodes: HashMap<[u8; 32], NodeProfile>,
+    guard_nodes: Vec<[u8; 32]>, // IDs de nodos guardianes
 }
 
 impl Default for RoutingTable {
@@ -32,15 +34,27 @@ impl RoutingTable {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
+            guard_nodes: Vec::new(),
         }
     }
 
     pub fn update_node(&mut self, profile: NodeProfile) {
+        if profile.is_guard && !self.guard_nodes.contains(&profile.id) {
+            self.guard_nodes.push(profile.id);
+        }
         self.nodes.insert(profile.id, profile);
     }
 
     pub fn get_all_nodes(&self) -> Vec<NodeProfile> {
         self.nodes.values().cloned().collect()
+    }
+
+    pub fn get_guards(&self) -> Vec<NodeProfile> {
+        self.guard_nodes
+            .iter()
+            .filter_map(|id| self.nodes.get(id))
+            .cloned()
+            .collect()
     }
 
     /// Guarda la tabla de routing en disco para persistencia entre reinicios.
@@ -54,7 +68,12 @@ impl RoutingTable {
     pub fn load_from_disk(path: &str) -> Result<Self> {
         let data = std::fs::read_to_string(path)?;
         let nodes: HashMap<[u8; 32], NodeProfile> = serde_json::from_str(&data)?;
-        Ok(Self { nodes })
+        let guard_nodes = nodes
+            .values()
+            .filter(|n| n.is_guard)
+            .map(|n| n.id)
+            .collect();
+        Ok(Self { nodes, guard_nodes })
     }
 }
 
@@ -83,7 +102,25 @@ impl PathFinder {
         let mut available_nodes = all_nodes;
         let mut rng = rand::thread_rng();
 
-        for _ in 0..hops {
+        // Si hay guards disponibles, el primer salto SIEMPRE debe ser un guard node
+        let guards = self.routing_table.get_guards();
+        let mut start_idx = 0;
+
+        if !guards.is_empty() && hops > 0 {
+            // Seleccionar guard aleatorio con peso
+            let guard_idx = rng.gen_range(0..guards.len());
+            let guard = guards[guard_idx].clone();
+
+            // Remover de available nodes para no repetir
+            if let Some(pos) = available_nodes.iter().position(|n| n.id == guard.id) {
+                available_nodes.remove(pos);
+            }
+
+            path.push(guard);
+            start_idx = 1;
+        }
+
+        for _ in start_idx..hops {
             // Calculamos los pesos para la selección probabilística
             // Score = (Reputación * 0.4) + (Stake * 0.3) + ((1 / Latencia) * 0.2) + (AnchoDeBanda * 0.1)
             let weights: Vec<f32> = available_nodes
@@ -150,6 +187,7 @@ mod tests {
                 bandwidth_kbps: 1000 - (i * 50) as u32,
                 reputation: 0.9 - (i as f32 * 0.05),
                 staked_amount: 1000 - (i * 100) as u64,
+                is_guard: i == 0, // El primer nodo es el único guard
             });
         }
 
